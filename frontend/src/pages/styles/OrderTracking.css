@@ -1,0 +1,62 @@
+/* OrderTracking.css */
+.order-timeline {
+    position: relative;
+    padding-left: 50px;
+    margin: 20px 0;
+  }
+  
+  .order-timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #e9ecef;
+  }
+  
+  .timeline-step {
+    position: relative;
+    margin-bottom: 30px;
+  }
+  
+  .timeline-step::before {
+    content: '';
+    position: absolute;
+    left: -35px;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 2px solid #dee2e6;
+    z-index: 1;
+  }
+  
+  .timeline-step.active::before {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+  }
+  
+  .timeline-step.completed::before {
+    background-color: #198754;
+    border-color: #198754;
+  }
+  
+  .timeline-step-icon {
+    position: absolute;
+    left: -30px;
+    top: 5px;
+    color: white;
+    z-index: 2;
+    font-size: 0.8rem;
+  }
+  
+  .card {
+    transition: all 0.3s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
