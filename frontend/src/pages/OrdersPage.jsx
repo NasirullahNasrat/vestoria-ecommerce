@@ -111,7 +111,7 @@ const OrdersPage = () => {
                 onClick={() => navigate(`/orders/${order.id}`)}
               >
                 <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h3 className="h5 mb-0">Order #{order.id}</h3>
+                  <h3 className="h5 mb-0">Order #{order.order_number}</h3>
                   <span className={`badge bg-${getStatusColor(order.status)}`}>
                     {order.status?.toUpperCase() || 'UNKNOWN'}
                   </span>

@@ -20,7 +20,8 @@ import {
   PageNotFound,
   OrdersPage,
   OrderTracking,
-  Profile
+  Profile,
+  OrderConfirmation  // Make sure to import this component
 } from "./pages";
 import ScrollToTop from "./components/ScrollToTop";
 import InitializeAuth from "./components/InitializeAuth";
@@ -42,12 +43,12 @@ root.render(
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/:orderId" element={<OrderTracking />} />
-            <Route path="*" element={<PageNotFound />} />
-            <Route path="/product/*" element={<PageNotFound />} />
-            // Add this to your existing routes in index.js
             <Route path="/profile" element={<Profile />} />
+            <Route path="/product/*" element={<PageNotFound />} />
+            <Route path="*" element={<PageNotFound />} />
           </Routes>
         </ScrollToTop>
         <Toaster 
