@@ -113,4 +113,4 @@ Vestoria is a comprehensive eCommerce solution that showcases the integration of
 
 
 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GNU GENERAL PUBLIC LICENSE.
