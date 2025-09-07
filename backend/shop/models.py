@@ -1,9 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
-from django.core.validators import MinValueValidator, EmailValidator
+from django.core.validators import MinValueValidator
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
-from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -238,6 +237,10 @@ class Coupon(models.Model):
 
 
 
+
+from django.core.validators import EmailValidator
+from django.utils import timezone
+
 class ContactSubmission(models.Model):
     # Basic contact information
     name = models.CharField(
@@ -303,3 +306,52 @@ class ContactSubmission(models.Model):
     def short_message(self):
         """Return a shortened version of the message for admin display"""
         return (self.message[:75] + '...') if len(self.message) > 75 else self.message
+    
+
+
+
+
+from django.contrib.contenttypes.models import ContentType
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('order', 'Order'),
+        ('user', 'User'),
+        ('system', 'System'),
+        ('product', 'Product'),
+        ('support', 'Support'),
+    )
+    
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    related_object_id = models.PositiveIntegerField(null=True, blank=True)
+    related_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        
+    def __str__(self):
+        return f"{self.title} - {self.recipient.username}"
+    
+    @property
+    def time_since(self):
+        now = timezone.now()
+        diff = now - self.created_at
+        
+        if diff.days > 0:
+            return f"{diff.days} days ago"
+        elif diff.seconds > 3600:
+            return f"{diff.seconds // 3600} hours ago"
+        elif diff.seconds > 60:
+            return f"{diff.seconds // 60} minutes ago"
+        return "Just now"

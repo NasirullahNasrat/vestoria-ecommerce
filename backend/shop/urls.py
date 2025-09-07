@@ -43,14 +43,25 @@ from .views import (
     # Coupons
     CouponValidateView,
     
-    # Reviews
-    ProductReviewCreateView,
+    # Reviews - Use the views you actually have
     ProductReviewListView,
+    ProductReviewCreateView,
     
     # User Profile
     UserProfileView,
     ContactSubmissionCreateView,
-    
+    MyTokenObtainPairView,
+
+    DashboardStatsView,
+    RecentActivityView,
+    AdminOrderListView,
+    AdminOrderDetailView,
+    CustomerListView,
+    CustomerDetailView,
+    NotificationListView,
+    NotificationMarkAllAsReadView,
+    UnreadNotificationCountView,
+    NotificationMarkAsReadView,
 )
 
 router = DefaultRouter()
@@ -60,6 +71,7 @@ app_name = 'shop'
 
 urlpatterns = [
     # Authentication URLs
+    path('admin_token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
@@ -72,9 +84,12 @@ urlpatterns = [
     path('products/create/', ProductCreateView.as_view(), name='product-create'),
     path('products/id/<int:pk>/', ProductDetailView.as_view(), name='product-detail-by-id'),
     path('products/slug/<slug:slug>/', ProductDetailView.as_view(), name='product-detail-by-slug'),
-    path('products/<slug:slug>/manage/', ProductUpdateDestroyView.as_view(), name='product-manage'),
+
+    # Product management URLs
+    path('products/id/<int:pk>/manage/', ProductUpdateDestroyView.as_view(), name='product-manage-by-id'),
+    path('products/<slug:slug>/manage/', ProductUpdateDestroyView.as_view(), name='product-manage-by-slug'),
     
-    # Product Review URLs
+    # Product Review URLs - Add these
     path('products/<int:product_id>/reviews/', ProductReviewListView.as_view(), name='product-review-list'),
     path('products/<int:product_id>/reviews/create/', ProductReviewCreateView.as_view(), name='product-review-create'),
     
@@ -96,6 +111,10 @@ urlpatterns = [
     path('orders/', OrderListView.as_view(), name='order-list'),
     path('orders/create/', OrderCreateView.as_view(), name='order-create'),
     path('orders/<int:pk>/', OrderDetailView.as_view(), name='order-detail'),
+
+    # Admin order URLs
+    path('orders/admin/', AdminOrderListView.as_view(), name='admin-order-list'),
+    path('orders/admin/<int:id>/', AdminOrderDetailView.as_view(), name='admin-order-detail'),
     
     # Coupon URLs
     path('coupons/validate/', CouponValidateView.as_view(), name='coupon-validate'),
@@ -105,8 +124,20 @@ urlpatterns = [
     
     # User URLs
     path('user/profile/', UserProfileView.as_view(), name='user-profile'),
-    path('contact/', ContactSubmissionCreateView.as_view(), name='contact' ),
-    
+    path('contact/', ContactSubmissionCreateView.as_view(), name='contact'),
+
+    # Admin URLs
+    path('admin/dashboard-stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('admin/recent-activity/', RecentActivityView.as_view(), name='recent-activity'),
+    path('admin/customers/', CustomerListView.as_view(), name='admin-customer-list'),
+    path('admin/customers/<int:pk>/', CustomerDetailView.as_view(), name='admin-customer-detail'),
+
+    # Notification URLs
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:notification_id>/read/', NotificationMarkAsReadView.as_view(), name='notification-read'),
+    path('notifications/read-all/', NotificationMarkAllAsReadView.as_view(), name='notification-read-all'),
+    path('notifications/unread-count/', UnreadNotificationCountView.as_view(), name='notification-unread-count'),
+
     # Include router URLs (addresses)
     path('', include(router.urls)),
 ]

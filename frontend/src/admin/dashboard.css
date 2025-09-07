@@ -1,0 +1,167 @@
+/* src/dashboard.css */
+.dashboard {
+    min-height: 100vh;
+  }
+  
+  .top-navbar {
+    height: 60px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  .sidebar {
+    min-height: calc(100vh - 60px);
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  }
+  
+  .sidebar .nav-link {
+    padding: 12px 20px;
+    color: #333;
+    border-left: 3px solid transparent;
+  }
+  
+  .sidebar .nav-link:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .sidebar .nav-link.active {
+    background-color: #e9ecef;
+    border-left: 3px solid #007bff;
+    color: #007bff;
+  }
+  
+  .sidebar .nav-link i {
+    width: 20px;
+    text-align: center;
+  }
+  
+  .content-area {
+    padding: 20px;
+    background-color: #f8f9fa;
+  }
+  
+  .stat-card {
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.3s;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+  }
+  
+  .activity-feed {
+    padding: 0;
+  }
+  
+  .activity-item {
+    display: flex;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+  
+  .activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-right: 15px;
+  }
+  
+  .activity-content {
+    flex: 1;
+  }
+  
+  .notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 10px;
+  }
+  
+  .page-header {
+    padding: 20px 0;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+  }
+
+
+
+
+  /* src/login.css */
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+  }
+  
+  .login-card {
+    border-radius: 15px;
+    border: none;
+    overflow: hidden;
+  }
+  
+  .login-card .card-body {
+    padding: 40px;
+  }
+  
+  .input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
+  }
+  
+  .form-control {
+    border-left: none;
+  }
+  
+  .form-control:focus {
+    box-shadow: none;
+    border-color: #ced4da;
+  }
+  
+  .btn-primary {
+    background-color: #667eea;
+    border: none;
+    padding: 10px;
+    font-weight: 600;
+  }
+  
+  .btn-primary:hover {
+    background-color: #5a6fd1;
+  }
+  
+  .btn-primary:focus {
+    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.5);
+  }
+  
+  a {
+    color: #667eea;
+  }
+  
+  a:hover {
+    color: #5a6fd1;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .login-card .card-body {
+      padding: 30px;
+    }
+  }

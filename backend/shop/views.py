@@ -6,38 +6,18 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.db.models import Q, Sum
-from decimal import Decimal
-from rest_framework.permissions import IsAuthenticated
-from decimal import Decimal, InvalidOperation
-from rest_framework import generics, status
-from rest_framework.response import Response
-from .models import ContactSubmission
-from .serializers import ContactSubmissionSerializer
-from django.utils import timezone
-from rest_framework.permissions import AllowAny
-
-
-
-
-
-
-
 from .models import (
     Product, Customer, Vendor, Address, Category,
     Order, OrderItem, Cart, CartItem, Coupon,
-    ProductImage, ProductReview
+    ProductImage, ProductReview, Notification
 )
-
-
-
-
 from .serializers import (
     ProductSerializer, CustomTokenObtainPairSerializer,
     UserRegistrationSerializer, CustomerProfileSerializer,
     VendorProfileSerializer, AddressSerializer, CategorySerializer,
     OrderSerializer, OrderItemSerializer, CartSerializer,
     CartItemSerializer, CouponSerializer, ProductImageSerializer,
-    ProductReviewSerializer
+    ProductReviewSerializer, NotificationSerializer, ProductReviewSerializer, ProductReviewCreateSerializer
 )
 
 User = get_user_model()
@@ -188,6 +168,11 @@ class ProductListView(generics.ListAPIView):
             
         return queryset
 
+# class ProductDetailView(generics.RetrieveAPIView):
+#     queryset = Product.objects.filter(active=True)
+#     serializer_class = ProductSerializer
+#     permission_classes = [permissions.AllowAny]
+#     lookup_field = 'slug'
 
 
 class ProductDetailView(generics.RetrieveAPIView):
@@ -229,23 +214,89 @@ class ProductCreateView(generics.CreateAPIView):
         else:
             raise permissions.PermissionDenied("Only vendors can create products")
 
+
+
+
+
+
+
+
+# class ProductUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = Product.objects.all()
+#     serializer_class = ProductSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     lookup_field = 'id'  # Changed from 'slug' to 'id' to match your frontend
+
+#     def get_serializer_class(self):
+#         if self.request.method in ['PUT', 'PATCH']:
+#             # Use a different serializer for updates if needed
+#             return ProductSerializer
+#         return super().get_serializer_class()
+
+#     def perform_update(self, serializer):
+#         product = self.get_object()
+#         if self.request.user != product.vendor.user and not self.request.user.is_staff:
+#             raise permissions.PermissionDenied("You don't have permission to edit this product")
+        
+#         # Handle images separately if needed
+#         images = self.request.FILES.getlist('images')
+#         if images:
+#             # Clear existing images if needed
+#             product.images.all().delete()
+#             for image in images:
+#                 ProductImage.objects.create(product=product, image=image)
+        
+#         serializer.save()
+
+
+
 class ProductUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
-    lookup_field = 'slug'
+    
+    # Handle both ID and slug lookups
+    def get_object(self):
+        queryset = self.get_queryset()
+        
+        if 'pk' in self.kwargs:
+            # ID-based lookup
+            lookup = {'pk': self.kwargs['pk']}
+        elif 'slug' in self.kwargs:
+            # Slug-based lookup
+            lookup = {'slug': self.kwargs['slug']}
+        else:
+            raise Http404("No valid lookup parameter provided")
+        
+        try:
+            return queryset.get(**lookup)
+        except Product.DoesNotExist:
+            raise Http404("Product not found")
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
 
     def perform_update(self, serializer):
         product = self.get_object()
-        if self.request.user != product.vendor.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied("You don't have permission to edit this product")
+        
+        # Handle images
+        images = self.request.FILES.getlist('images')
+        if images:
+            # Clear existing images if needed
+            product.images.all().delete()
+            for image in images:
+                ProductImage.objects.create(product=product, image=image)
+        
         serializer.save()
 
-    def perform_destroy(self, instance):
-        if self.request.user != instance.vendor.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied("You don't have permission to delete this product")
-        instance.active = False
-        instance.save()
+
+
+
+
+
+
 
 # ==================== Category Views ====================
 class CategoryListView(generics.ListAPIView):
@@ -318,6 +369,7 @@ class CartItemUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         return CartItem.objects.filter(cart=cart)
 
 # ==================== Order Views ====================
+# Update your OrderListView to ensure proper serialization
 class OrderListView(generics.ListAPIView):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -325,6 +377,19 @@ class OrderListView(generics.ListAPIView):
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user).order_by('-created')
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        
+        # Return a properly structured response
+        return Response({
+            'success': True,
+            'count': queryset.count(),
+            'orders': serializer.data  # Make sure this is an array
+        })
+
+from decimal import Decimal
+from rest_framework.permissions import IsAuthenticated
 
 
 
@@ -333,6 +398,14 @@ class OrderListView(generics.ListAPIView):
 
 
 
+
+
+
+from decimal import Decimal, InvalidOperation
+# from rest_framework.permissions import IsAuthenticated
+# from rest_framework.response import Response
+# from rest_framework import status
+# from rest_framework.views import APIView
 
 
 
@@ -452,6 +525,18 @@ class OrderCreateView(APIView):
                 return order_number
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class OrderDetailView(generics.RetrieveAPIView):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -555,7 +640,12 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
 
 
-
+from rest_framework import generics, status
+from rest_framework.response import Response
+from .models import ContactSubmission
+from .serializers import ContactSubmissionSerializer
+from django.utils import timezone
+from rest_framework.permissions import AllowAny
 
 class ContactSubmissionCreateView(generics.CreateAPIView):
     queryset = ContactSubmission.objects.all()
@@ -598,3 +688,509 @@ class ContactSubmissionListView(generics.ListAPIView):
     filterset_fields = ['is_responded', 'email']
     ordering_fields = ['submitted_at']
     ordering = ['-submitted_at']
+
+
+
+
+
+
+# In your token view or serializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['is_admin'] = self.user.is_staff  # or self.user.is_superuser
+        return data
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
+
+
+
+
+
+
+
+
+
+
+from rest_framework import permissions
+from django.db.models import Count, Sum
+ 
+
+class DashboardStatsView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        total_users = User.objects.count()
+        total_revenue = Order.objects.filter(status='C').aggregate(
+            total=Sum('total')
+        )['total'] or 0
+        pending_orders = Order.objects.filter(status='P').count()
+        support_tickets = ContactSubmission.objects.filter(is_responded=False).count()
+
+        return Response({
+            'total_users': total_users,
+            'total_revenue': float(total_revenue),  # Convert Decimal to float for JSON
+            'pending_orders': pending_orders,
+            'support_tickets': support_tickets
+        })
+    
+
+# views.py
+from django.utils import timezone
+from datetime import timedelta
+
+class RecentActivityView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # Get recent user registrations
+        recent_users = User.objects.filter(
+            date_joined__gte=timezone.now() - timedelta(days=7)
+        ).order_by('-date_joined')[:5]
+
+        # Get recent orders
+        recent_orders = Order.objects.order_by('-created')[:5]
+
+        # Get recent support tickets
+        recent_tickets = ContactSubmission.objects.order_by('-submitted_at')[:5]
+
+        activity = []
+        
+        for user in recent_users:
+            activity.append({
+                'type': 'primary',
+                'icon': 'user-plus',
+                'title': 'New user',
+                'description': f'{user.username} registered',
+                'timestamp': user.date_joined
+            })
+            
+        for order in recent_orders:
+            activity.append({
+                'type': 'success',
+                'icon': 'shopping-cart',
+                'title': 'New order',
+                'description': f'#{order.order_number} received',
+                'timestamp': order.created
+            })
+            
+        for ticket in recent_tickets:
+            activity.append({
+                'type': 'info',
+                'icon': 'ticket-alt',
+                'title': 'Support ticket',
+                'description': f'from {ticket.email}',
+                'timestamp': ticket.submitted_at
+            })
+        
+        # Sort by timestamp descending
+        activity.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return Response(activity[:10])  # Return top 10 most recent
+
+
+from django.utils import timezone
+from datetime import timedelta
+
+class RecentActivityView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # Get recent user registrations
+        recent_users = User.objects.filter(
+            date_joined__gte=timezone.now() - timedelta(days=7)
+        ).order_by('-date_joined')[:5]
+
+        # Get recent orders
+        recent_orders = Order.objects.order_by('-created')[:5]
+
+        # Get recent support tickets
+        recent_tickets = ContactSubmission.objects.order_by('-submitted_at')[:5]
+
+        activity = []
+        
+        for user in recent_users:
+            activity.append({
+                'type': 'primary',
+                'icon': 'user-plus',
+                'title': 'New user',
+                'description': f'{user.username} registered',
+                'timestamp': user.date_joined
+            })
+            
+        for order in recent_orders:
+            activity.append({
+                'type': 'success',
+                'icon': 'shopping-cart',
+                'title': 'New order',
+                'description': f'#{order.order_number} received',
+                'timestamp': order.created
+            })
+            
+        for ticket in recent_tickets:
+            activity.append({
+                'type': 'info',
+                'icon': 'ticket-alt',
+                'title': 'Support ticket',
+                'description': f'from {ticket.email}',
+                'timestamp': ticket.submitted_at
+            })
+        
+        # Sort by timestamp descending
+        activity.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return Response(activity[:10])  # Return top 10 most recent
+
+
+
+
+
+
+
+
+
+# class AdminOrderListView(generics.ListAPIView):
+#     serializer_class = OrderSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     queryset = Order.objects.all().order_by('-created')
+
+
+
+class AdminOrderListView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get_queryset(self):
+        queryset = Order.objects.all()
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            # Make sure you're filtering correctly
+            queryset = queryset.filter(user__id=user_id)
+        return queryset
+    
+
+
+
+class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAdminUser]
+    queryset = Order.objects.all()
+    lookup_field = 'id'
+
+
+
+from .serializers import CustomerSerializer, CustomerCreateUpdateSerializer
+from rest_framework.pagination import PageNumberPagination
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'links': {
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link()
+            },
+            'count': self.page.paginator.count,
+            'results': data
+        })
+
+
+
+
+
+
+# class CustomerListView(generics.ListCreateAPIView):
+#     serializer_class = CustomerSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     queryset = Customer.objects.all().select_related('user')
+#     pagination_class = StandardResultsSetPagination
+
+#     def get_queryset(self):
+#         queryset = super().get_queryset()
+        
+#         # Search filter
+#         search = self.request.query_params.get('search', '')
+#         if search:
+#             queryset = queryset.filter(
+#                 Q(user__email__icontains=search) |
+#                 Q(user__first_name__icontains=search) |
+#                 Q(user__last_name__icontains=search) |
+#                 Q(phone__icontains=search)
+#             )
+        
+#         # Role filter
+#         role = self.request.query_params.get('role', '')
+#         if role.lower() == 'admin':
+#             queryset = queryset.filter(user__is_staff=True)
+#         elif role.lower() == 'customer':
+#             queryset = queryset.filter(user__is_staff=False)
+        
+#         # Status filter
+#         status = self.request.query_params.get('status', '')
+#         if status.lower() == 'active':
+#             queryset = queryset.filter(user__is_active=True)
+#         elif status.lower() == 'inactive':
+#             queryset = queryset.filter(user__is_active=False)
+        
+#         return queryset.order_by('-user__date_joined')
+
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         page = self.paginate_queryset(queryset)
+        
+#         if page is not None:
+#             serializer = self.get_serializer(page, many=True)
+#             return self.get_paginated_response(serializer.data)
+        
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)    
+    
+from rest_framework.permissions import IsAdminUser
+
+class CustomerListView(generics.ListAPIView):
+    permission_classes = [IsAdminUser]
+    serializer_class = CustomerSerializer
+    
+    def get_queryset(self):
+        queryset = User.objects.filter(is_staff=False)  # or your customer model
+        
+        # Add filtering logic based on query parameters
+        search = self.request.query_params.get('search', None)
+        role = self.request.query_params.get('role', None)
+        status = self.request.query_params.get('status', None)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) | 
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search)
+            )
+        
+        if role == 'admin':
+            queryset = queryset.filter(is_staff=True)
+        elif role == 'customer':
+            queryset = queryset.filter(is_staff=False)
+        
+        if status == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status == 'inactive':
+            queryset = queryset.filter(is_active=False)
+        
+        return queryset
+
+
+
+
+
+# class CustomerDetailView(generics.RetrieveUpdateDestroyAPIView):
+#     serializer_class = CustomerSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     queryset = Customer.objects.all().select_related('user')
+
+#     def get_serializer_class(self):
+#         if self.request.method in ['PUT', 'PATCH']:
+#             return CustomerCreateUpdateSerializer
+#         return super().get_serializer_class()
+
+#     def perform_update(self, serializer):
+#         user_data = {}
+#         if 'email' in self.request.data:
+#             user_data['email'] = self.request.data['email']
+#         if 'first_name' in self.request.data:
+#             user_data['first_name'] = self.request.data['first_name']
+#         if 'last_name' in self.request.data:
+#             user_data['last_name'] = self.request.data['last_name']
+#         if 'is_active' in self.request.data:
+#             user_data['is_active'] = self.request.data['is_active']
+        
+#         customer = serializer.save()
+#         if user_data:
+#             User.objects.filter(id=customer.user.id).update(**user_data)
+
+#     def destroy(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         user = instance.user
+#         self.perform_destroy(instance)
+#         user.delete()  # Also delete the associated user
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+
+
+
+
+class CustomerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CustomerSerializer
+    permission_classes = [permissions.IsAdminUser]
+    queryset = User.objects.filter(is_staff=False)  # use User not Customer
+
+
+
+
+
+
+
+
+
+
+
+
+
+# class NotificationListView(generics.ListAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+    
+#     def get_queryset(self):
+#         return Notification.objects.filter(
+#             recipient=self.request.user
+#         ).order_by('-created_at')
+    
+
+class LimitPagination(PageNumberPagination):
+    page_size_query_param = 'limit'
+    max_page_size = 100
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = LimitPagination
+    
+    def get_queryset(self):
+        return Notification.objects.filter(
+            recipient=self.request.user
+        ).order_by('-created_at')
+    
+
+
+
+class NotificationMarkAsReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(
+                id=notification_id,
+                recipient=request.user
+            )
+            notification.is_read = True
+            notification.save()
+            return Response({'status': 'success'})
+        except Notification.DoesNotExist:
+            return Response(
+                {'error': 'Notification not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class NotificationMarkAllAsReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).update(is_read=True)
+        return Response({'status': 'success'})
+
+class UnreadNotificationCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        count = Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).count()
+        return Response({'count': count})
+    
+
+
+
+
+
+
+
+from .serializers import ProductCreateSerializer
+
+class ProductCreateView(generics.CreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductCreateSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+
+
+
+
+
+
+
+
+
+
+from django.shortcuts import get_object_or_404
+
+class ProductReviewListView(generics.ListAPIView):
+    serializer_class = ProductReviewSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        product_id = self.kwargs['product_id']
+        return ProductReview.objects.filter(product_id=product_id).order_by('-created')
+
+class ProductReviewCreateView(generics.CreateAPIView):
+    serializer_class = ProductReviewCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['product'] = get_object_or_404(Product, id=self.kwargs['product_id'])
+        return context
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Check if user already reviewed this product
+        product_id = self.kwargs['product_id']
+        if ProductReview.objects.filter(user=request.user, product_id=product_id).exists():
+            return Response(
+                {"error": "You have already reviewed this product."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        
+        # Return the created review with full details
+        review_serializer = ProductReviewSerializer(serializer.instance)
+        return Response(
+            review_serializer.data,
+            status=status.HTTP_201_CREATED, 
+            headers=headers
+        )

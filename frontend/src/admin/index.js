@@ -1,0 +1,11 @@
+export { default as Dashboard } from './Dashboard';
+export {default as AdminLogin } from './Login';
+export {default as UsersList } from './UsersList.jsx';
+export {default as AdminProductsList } from './AdminProductsList.jsx';
+export {default as EditProduct } from './EditProduct.jsx';
+export {default as ProfilePage } from './AdminProfile.jsx';
+export {default as AdminOrdersList } from './AdminOrdersList.jsx';
+export {default as NotificationsPage } from './NotificationsPage.jsx';
+export {default as AdminProductAdd } from './AdminProductAdd.jsx';
+export {default as CustomerDetails } from './CustomerDetail.jsx';
+export {default as OrderDetail } from './OrderDetail.jsx';

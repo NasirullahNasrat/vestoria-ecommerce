@@ -7,15 +7,18 @@ import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../redux/reducer/cartSlice";
 import { logout } from "../redux/reducer/authSlice";
 import { Footer, Navbar } from "../components";
+import ReviewSection from "../components/ReviewSection"; // Direct import
 import toast from "react-hot-toast";
-import { FaStar } from "react-icons/fa";
+import { FaStar, FaArrowLeft } from "react-icons/fa";
 
 const Product = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [similarProducts, setSimilarProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loading2, setLoading2] = useState(true);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -81,6 +84,36 @@ const Product = () => {
     return `http://localhost:8000${imagePath}`;
   };
 
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const response = await axios.get(
+        `http://localhost:8000/api/products/${id}/reviews/`
+      );
+      
+      console.log("Reviews API response:", response.data);
+      console.log("Type of response:", typeof response.data);
+      console.log("Is array:", Array.isArray(response.data));
+      
+      // Set reviews based on actual response format
+      if (Array.isArray(response.data)) {
+        setReviews(response.data);
+      } else if (response.data && response.data.results) {
+        setReviews(response.data.results);
+      } else if (response.data && response.data.reviews) {
+        setReviews(response.data.reviews);
+      } else {
+        setReviews([]);
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      toast.error("Failed to load reviews");
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -90,6 +123,9 @@ const Product = () => {
         
         const response = await axios.get(`http://localhost:8000/api/products/id/${id}/`);
         setProduct(response.data);
+        
+        // Fetch reviews after product data is loaded
+        await fetchReviews();
         
         if (response.data.category?.id) {
           const similarResponse = await axios.get(
@@ -157,6 +193,9 @@ const Product = () => {
               maxWidth: '100%',
               objectFit: 'contain'
             }}
+            onError={(e) => {
+              e.target.src = 'https://via.placeholder.com/400x400?text=No+Image';
+            }}
           />
         </div>
         
@@ -182,6 +221,9 @@ const Product = () => {
                     height: '60px',
                     objectFit: 'cover',
                   }}
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/60x60?text=No+Image';
+                  }}
                 />
               </div>
             ))}
@@ -194,33 +236,53 @@ const Product = () => {
   const ProductDetails = () => {
     if (!product) return null;
     
-    const averageRating = product.reviews?.length > 0 
-      ? (product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length).toFixed(1)
-      : null;
+    // Use the average_rating from the product if available, otherwise calculate it
+    const averageRating = product.avg_rating || 
+      (product.reviews?.length > 0 
+        ? (product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length).toFixed(1)
+        : 0);
+    
+    const reviewCount = product.review_count || product.reviews?.length || 0;
 
     return (
       <div className="product-details">
+        <button 
+          onClick={() => navigate(-1)}
+          className="btn btn-outline-secondary mb-4"
+        >
+          <FaArrowLeft className="me-2" /> Back
+        </button>
+        
         <h4 className="text-muted">{product.category?.name || 'Uncategorized'}</h4>
         <h1 className="mb-3">{product.name}</h1>
         
-        {averageRating && (
+        {averageRating > 0 ? (
           <div className="rating mb-3">
             <span className="badge bg-warning text-dark me-2">
               {averageRating} <FaStar className="d-inline" />
             </span>
-            <small>({product.reviews.length} reviews)</small>
+            <small>({reviewCount} review{reviewCount !== 1 ? 's' : ''})</small>
+          </div>
+        ) : (
+          <div className="rating mb-3">
+            <small className="text-muted">No reviews yet</small>
           </div>
         )}
 
         <div className="price mb-4">
           <h2 className="text-primary">
             ${product.current_price}
-            {product.discount_price < product.price && (
+            {product.price > product.current_price && (
               <small className="text-muted text-decoration-line-through ms-2">
                 ${product.price}
               </small>
             )}
           </h2>
+          {product.price > product.current_price && (
+            <span className="badge bg-success ms-2">
+              Save ${(product.price - product.current_price).toFixed(2)}
+            </span>
+          )}
         </div>
 
         <p className="lead mb-4">{product.description}</p>
@@ -240,7 +302,7 @@ const Product = () => {
             onClick={() => addToCartHandler(product)}
             disabled={product.stock <= 0}
           >
-            Add to Cart
+            {product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}
           </button>
           <Link to="/cart" className="btn btn-outline-primary btn-lg">
             View Cart
@@ -252,10 +314,15 @@ const Product = () => {
 
   const SimilarProducts = () => {
     if (loading2) return (
-      <div className="d-flex justify-content-center">
+      <div className="row">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="mx-3">
-            <Skeleton width={200} height={300} />
+          <div key={i} className="col-md-3 col-sm-6 mb-4">
+            <div className="card h-100">
+              <Skeleton height={200} />
+              <div className="card-body">
+                <Skeleton count={3} />
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -264,29 +331,34 @@ const Product = () => {
     if (similarProducts.length === 0) return null;
 
     return (
-      <Marquee pauseOnHover pauseOnClick speed={50}>
-        {similarProducts.map(item => (
-          <div key={item.id} className="card mx-3" style={{ width: '18rem' }}>
-            <img
-              src={getImageUrl(item.thumbnail_image || (item.images?.[0]?.image))}
-              className="card-img-top p-3"
-              alt={item.name}
-              style={{ height: '200px', objectFit: 'contain' }}
-            />
-            <div className="card-body">
-              <h5 className="card-title">{item.name}</h5>
-              <p className="card-text">${item.current_price}</p>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => addToCartHandler(item)}
-                disabled={item.stock <= 0}
-              >
-                Add to Cart
-              </button>
+      <div className="similar-products">
+        <Marquee pauseOnHover pauseOnClick speed={50}>
+          {similarProducts.map(item => (
+            <div key={item.id} className="card mx-3" style={{ width: '18rem' }}>
+              <img
+                src={getImageUrl(item.thumbnail_image || (item.images?.[0]?.image))}
+                className="card-img-top p-3"
+                alt={item.name}
+                style={{ height: '200px', objectFit: 'contain' }}
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/200x200?text=No+Image';
+                }}
+              />
+              <div className="card-body text-center">
+                <h5 className="card-title">{item.name}</h5>
+                <p className="card-text">${item.current_price}</p>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => addToCartHandler(item)}
+                  disabled={item.stock <= 0}
+                >
+                  {item.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </Marquee>
+          ))}
+        </Marquee>
+      </div>
     );
   };
 
@@ -295,7 +367,22 @@ const Product = () => {
       <Navbar />
       <div className="container py-4">
         {error ? (
-          <div className="alert alert-danger">{error}</div>
+          <div className="alert alert-danger text-center">
+            <h4>Oops! Something went wrong</h4>
+            <p>{error}</p>
+            <button 
+              className="btn btn-primary me-2"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </button>
+            <button 
+              className="btn btn-outline-secondary"
+              onClick={() => navigate('/')}
+            >
+              Go Home
+            </button>
+          </div>
         ) : loading ? (
           <Loading />
         ) : (
@@ -309,10 +396,20 @@ const Product = () => {
               </div>
             </div>
 
-            <div className="mt-5 pt-5">
-              <h2 className="text-center mb-4">You May Also Like</h2>
-              <SimilarProducts />
-            </div>
+            {/* Review Section */}
+            <ReviewSection 
+              productId={id} 
+              reviews={reviews} 
+              onReviewAdded={fetchReviews}
+              loading={reviewsLoading}
+            />
+
+            {similarProducts.length > 0 && (
+              <div className="mt-5 pt-5">
+                <h2 className="text-center mb-4">You May Also Like</h2>
+                <SimilarProducts />
+              </div>
+            )}
           </>
         )}
       </div>

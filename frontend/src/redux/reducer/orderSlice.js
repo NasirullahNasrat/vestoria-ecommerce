@@ -4,7 +4,12 @@ import axios from 'axios';
 // Helper function to format API errors
 const formatApiErrors = (error) => {
   if (error.response?.data) {
+    // Handle Django REST framework error format
     if (typeof error.response.data === 'object') {
+      // Handle nested errors or non-field errors
+      if (error.response.data.detail) {
+        return error.response.data.detail;
+      }
       return Object.entries(error.response.data)
         .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
         .join('\n');
@@ -13,6 +18,18 @@ const formatApiErrors = (error) => {
   }
   return error.message || 'Request failed';
 };
+
+// Normalize order data structure
+const normalizeOrderData = (order) => ({
+  ...order,
+  id: order.id || order._id,
+  order_number: order.order_number || order.id,
+  created: order.created || order.created_at,
+  updated: order.updated || order.updated_at,
+  status: order.status?.toLowerCase() || 'pending',
+  items: Array.isArray(order.items) ? order.items : [],
+  total: parseFloat(order.total) || 0,
+});
 
 // Create a new order
 export const createOrder = createAsyncThunk(
@@ -23,7 +40,6 @@ export const createOrder = createAsyncThunk(
       const { token } = auth;
       const { items } = cart;
 
-      // Validation checks
       if (!token) {
         throw new Error('Authentication required');
       }
@@ -32,7 +48,6 @@ export const createOrder = createAsyncThunk(
         throw new Error('Cart is empty');
       }
 
-      // Prepare order items
       const validatedItems = items.map(item => {
         const product = item.product_details || item.product || item;
         
@@ -57,13 +72,11 @@ export const createOrder = createAsyncThunk(
         };
       });
 
-      // Prepare complete order payload
       const payload = {
         ...orderData,
         items: validatedItems
       };
 
-      // API call to create order
       const response = await axios.post(
         'http://localhost:8000/api/orders/create/',
         payload,
@@ -75,7 +88,7 @@ export const createOrder = createAsyncThunk(
         }
       );
 
-      return response.data;
+      return normalizeOrderData(response.data);
     } catch (error) {
       return rejectWithValue(formatApiErrors(error));
     }
@@ -102,14 +115,19 @@ export const fetchOrders = createAsyncThunk(
         }
       );
       
-      // Transform the response data if needed
-      const orders = response.data.map(order => ({
-        ...order,
-        created: new Date(order.created).toISOString(),
-        updated: new Date(order.updated).toISOString()
-      }));
+      // Handle different response formats
+      let ordersData = response.data;
+      if (!Array.isArray(ordersData)) {
+        if (ordersData.results) {
+          ordersData = ordersData.results; // Handle paginated responses
+        } else if (ordersData.orders) {
+          ordersData = ordersData.orders; // Handle nested orders response
+        } else {
+          throw new Error('Invalid orders data format');
+        }
+      }
       
-      return orders;
+      return ordersData.map(normalizeOrderData);
     } catch (error) {
       return rejectWithValue(formatApiErrors(error));
     }
@@ -136,12 +154,7 @@ export const fetchOrderById = createAsyncThunk(
         }
       );
       
-      // Transform dates in the response
-      return {
-        ...response.data,
-        created: new Date(response.data.created).toISOString(),
-        updated: new Date(response.data.updated).toISOString()
-      };
+      return normalizeOrderData(response.data);
     } catch (error) {
       return rejectWithValue(formatApiErrors(error));
     }
@@ -210,7 +223,7 @@ const orderSlice = createSlice({
       .addCase(createOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.currentOrder = action.payload;
-        state.orders.unshift(action.payload); // Add new order to the beginning
+        state.orders.unshift(action.payload);
         state.checkoutStatus = 'success';
         state.lastFetched = new Date().toISOString();
       })
@@ -268,5 +281,13 @@ export const {
   clearCurrentOrder,
   clearOrderError 
 } = orderSlice.actions;
+
+// Selectors
+export const selectAllOrders = (state) => state.order.orders;
+export const selectCurrentOrder = (state) => state.order.currentOrder;
+export const selectOrderLoading = (state) => state.order.loading;
+export const selectOrderError = (state) => state.order.error;
+export const selectCheckoutStatus = (state) => state.order.checkoutStatus;
+export const selectLastFetched = (state) => state.order.lastFetched;
 
 export default orderSlice.reducer;
