@@ -1,9 +1,10 @@
 // src/utils/axiosConfig.js
 import axios from 'axios';
 import { getAccessToken, refreshAccessToken, logout } from './adminAuth';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: getApiUrl('/api/'), // Use environment-based URL
 });
 
 // Add token to requests

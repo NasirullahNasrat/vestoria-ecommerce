@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { getApiUrl } from '../../config/env'; // Import the environment utility
 
 // Helper function to format API errors
 const formatApiErrors = (error) => {
@@ -77,8 +78,11 @@ export const createOrder = createAsyncThunk(
         items: validatedItems
       };
 
+      // Use environment-based URL
+      const createOrderUrl = getApiUrl('/api/orders/create/');
+      
       const response = await axios.post(
-        'http://localhost:8000/api/orders/create/',
+        createOrderUrl,
         payload,
         {
           headers: {
@@ -106,8 +110,11 @@ export const fetchOrders = createAsyncThunk(
         throw new Error('Authentication required');
       }
 
+      // Use environment-based URL
+      const ordersUrl = getApiUrl('/api/orders/');
+      
       const response = await axios.get(
-        'http://localhost:8000/api/orders/',
+        ordersUrl,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -145,8 +152,11 @@ export const fetchOrderById = createAsyncThunk(
         throw new Error('Authentication required');
       }
 
+      // Use environment-based URL
+      const orderDetailUrl = getApiUrl(`/api/orders/${orderId}/`);
+      
       const response = await axios.get(
-        `http://localhost:8000/api/orders/${orderId}/`,
+        orderDetailUrl,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -172,8 +182,11 @@ export const clearCart = createAsyncThunk(
         throw new Error('Authentication required');
       }
 
+      // Use environment-based URL
+      const clearCartUrl = getApiUrl('/api/cart/clear/');
+      
       await axios.delete(
-        'http://localhost:8000/api/cart/clear/',
+        clearCartUrl,
         {
           headers: {
             Authorization: `Bearer ${token}`,

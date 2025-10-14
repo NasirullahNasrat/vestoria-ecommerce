@@ -31,6 +31,7 @@ import {
   logout, 
   isAdmin 
 } from '../utils/adminAuth';
+import { getApiUrl } from '../config/env';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -92,7 +93,10 @@ const ProfilePage = () => {
 
   const fetchProfile = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/user/profile/', {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/user/profile/');
+      
+      const response = await axios.get(apiUrl, {
         headers: {
           Authorization: `Bearer ${getAccessToken()}`
         }
@@ -115,10 +119,15 @@ const ProfilePage = () => {
       });
 
       if (userData.profile_picture) {
+        // Use environment configuration for image URLs
+        const baseUrl = getApiUrl();
+        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+        const cleanImagePath = userData.profile_picture.replace(/^\//, '');
+        
         setImagePreview(
           userData.profile_picture.startsWith('http') ? 
           userData.profile_picture : 
-          `http://localhost:8000${userData.profile_picture}`
+          `${cleanBaseUrl}/${cleanImagePath}`
         );
       }
     } catch (error) {
@@ -216,8 +225,11 @@ const ProfilePage = () => {
         formData.append('vendor_details[description]', profile.vendor_details.description);
       }
 
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/user/profile/');
+      
       const response = await axios.put(
-        'http://localhost:8000/api/user/profile/',
+        apiUrl,
         formData,
         {
           headers: {
@@ -291,7 +303,7 @@ const ProfilePage = () => {
               <Card.Body className="text-center">
                 <div className="position-relative d-inline-block">
                   <Image
-                    src={imagePreview || 'https://ui-avatars.com/api/?name='+profile.first_name+'+'+profile.last_name+'&background=random'}
+                    src={imagePreview || `https://ui-avatars.com/api/?name=${profile.first_name}+${profile.last_name}&background=random`}
                     roundedCircle
                     width={150}
                     height={150}

@@ -3,6 +3,7 @@ import axios from "axios";
 import { Footer, Navbar } from "../components";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { getApiUrl } from "../config/env"; // Import the environment utility
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -101,8 +102,11 @@ const ContactPage = () => {
     setIsSubmitting(true);
     
     try {
+      // Use environment-based URL instead of hardcoded localhost
+      const contactApiUrl = getApiUrl('/api/contact/');
+      
       const response = await axios.post(
-        "http://localhost:8000/api/contact/",
+        contactApiUrl,
         {
           ...formData,
           captcha_verified: true // You can send this to your backend if needed

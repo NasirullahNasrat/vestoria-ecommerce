@@ -4,6 +4,9 @@ from django.core.validators import MinValueValidator
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
+from django.core.files.storage import FileSystemStorage
+import os
+import base64
 
 class User(AbstractUser):
     """Custom user model with roles"""
@@ -355,3 +358,67 @@ class Notification(models.Model):
         elif diff.seconds > 60:
             return f"{diff.seconds // 60} minutes ago"
         return "Just now"
+    
+
+
+
+
+
+
+
+
+
+
+def logo_upload_path(instance, filename):
+    # File will be uploaded to MEDIA_ROOT/settings/logo/<filename>
+    return os.path.join('settings', 'logo', filename)
+class SystemSettings(models.Model):
+    # General Settings
+    page_name = models.CharField(max_length=255, default="My Application")
+    logo = models.ImageField(
+        upload_to=logo_upload_path, 
+        null=True, 
+        blank=True,
+        help_text="Recommended size: 200x60 pixels"
+    )
+    
+    # API Settings
+    ai_api_key = models.CharField(max_length=255, blank=True, null=True)
+    public_key = models.CharField(max_length=255, blank=True, null=True)
+    ap_api_url = models.CharField(max_length=255, blank=True, null=True)  # New column
+    
+    # Payment Settings
+    stripe_secret_key = models.CharField(max_length=255, blank=True, null=True)
+    stripe_public_key = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "System Settings"
+        verbose_name_plural = "System Settings"
+    
+    def __str__(self):
+        return f"System Settings ({self.updated_at})"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one instance exists
+        if not self.pk and SystemSettings.objects.exists():
+            # Update the existing instance instead of creating a new one
+            existing = SystemSettings.objects.first()
+            existing.page_name = self.page_name
+            existing.logo = self.logo if self.logo else existing.logo
+            existing.ai_api_key = self.ai_api_key
+            existing.public_key = self.public_key
+            existing.ap_api_url = self.ap_api_url  # Added for new column
+            existing.stripe_secret_key = self.stripe_secret_key
+            existing.stripe_public_key = self.stripe_public_key
+            return existing.save(*args, **kwargs)
+        return super().save(*args, **kwargs)
+    
+    @classmethod
+    def load(cls):
+        # Get or create the singleton instance
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj

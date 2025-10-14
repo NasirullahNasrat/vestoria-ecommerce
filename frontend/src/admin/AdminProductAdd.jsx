@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { Formik, Form, Field, ErrorMessage } from "formik";
@@ -15,7 +15,13 @@ import {
   Image,
   Alert
 } from 'react-bootstrap';
-import { FaArrowLeft, FaUpload, FaTimes } from "react-icons/fa";
+import { 
+  FaArrowLeft, 
+  FaUpload, 
+  FaTimes, 
+  FaMagic, 
+  FaCopy 
+} from "react-icons/fa";
 import { 
   isAuthenticated, 
   getAccessToken, 
@@ -23,6 +29,7 @@ import {
   isAdmin
 } from "../utils/adminAuth";
 import AdminNavbar from "./AdminNavbar";
+import { getApiUrl } from "../config/env";
 
 const AdminProductAdd = () => {
   const [loading, setLoading] = useState(false);
@@ -33,6 +40,12 @@ const AdminProductAdd = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState(null);
   
+  // State for SEO description generation
+  const [generatingDescription, setGeneratingDescription] = useState(false);
+  const [generatedDescription, setGeneratedDescription] = useState('');
+  const [showDescription, setShowDescription] = useState(false);
+  const [seoInput, setSeoInput] = useState('');
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -81,6 +94,77 @@ const AdminProductAdd = () => {
       .replace(/\s+/g, '-') // Replace spaces with -
       .replace(/-+/g, '-') // Replace multiple - with single -
       .trim();
+  };
+
+  // Add function to generate SEO description
+  const generateSEODescription = async (productName = '') => {
+    if (!seoInput.trim()) {
+      toast.error('Please enter some product information first');
+      return;
+    }
+    
+    setGeneratingDescription(true);
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/generate-seo-keywords/');
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          product_name: productName,
+          product_description: seoInput
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate description');
+      }
+      
+      if (data.seo_description) {
+        setGeneratedDescription(data.seo_description);
+        setShowDescription(true);
+        toast.success('SEO description generated successfully!');
+      } else {
+        throw new Error('No description returned from AI');
+      }
+    } catch (error) {
+      console.error('Error generating description:', error);
+      toast.error(error.message || 'Failed to generate description');
+    } finally {
+      setGeneratingDescription(false);
+    }
+  };
+
+  // Add function to copy description to clipboard
+  const copyDescriptionToClipboard = () => {
+    navigator.clipboard.writeText(generatedDescription)
+      .then(() => {
+        toast.success('Description copied to clipboard!');
+      })
+      .catch(err => {
+        console.error('Failed to copy description: ', err);
+        toast.error('Failed to copy description');
+      });
+  };
+
+  // Add function to apply description
+  const applyDescription = (setFieldValue) => {
+    if (generatedDescription) {
+      setFieldValue('description', generatedDescription);
+      setShowDescription(false);
+      toast.success('Description applied successfully!');
+    }
   };
 
   // Form validation schema
@@ -149,6 +233,9 @@ const AdminProductAdd = () => {
         throw new Error('No authentication token found');
       }
 
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/products/create/');
+      
       const formData = new FormData();
       
       // Append all basic fields with proper type conversion
@@ -180,7 +267,7 @@ const AdminProductAdd = () => {
         });
       }
       
-      const response = await fetch('http://localhost:8000/api/products/create/', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -304,13 +391,17 @@ const AdminProductAdd = () => {
         throw new Error('No authentication token found');
       }
 
+      // Use environment configuration for API URLs
+      const categoriesUrl = getApiUrl('/api/categories/');
+      const vendorsUrl = getApiUrl('/api/vendors/');
+      
       const [categoriesRes, vendorsRes] = await Promise.all([
-        fetch('http://localhost:8000/api/categories/', {
+        fetch(categoriesUrl, {
           headers: {
             'Authorization': `Bearer ${token}`,
           }
         }),
-        fetch('http://localhost:8000/api/vendors/', {
+        fetch(vendorsUrl, {
           headers: {
             'Authorization': `Bearer ${token}`,
           }
@@ -447,6 +538,70 @@ const AdminProductAdd = () => {
                             />
                             <ErrorMessage name="description" component="div" className="text-danger small" />
                           </BootstrapForm.Group>
+
+                          {/* SEO Description Generation Section */}
+                          <Card className="mb-3 border-info">
+                            <Card.Header className="bg-info text-white">
+                              AI SEO Description Generator
+                            </Card.Header>
+                            <Card.Body>
+                              <BootstrapForm.Group className="mb-3">
+                                <BootstrapForm.Label>Enter product details for AI-powered SEO description</BootstrapForm.Label>
+                                <BootstrapForm.Control
+                                  as="textarea"
+                                  rows={3}
+                                  value={seoInput}
+                                  onChange={(e) => setSeoInput(e.target.value)}
+                                  placeholder="Describe your product features, benefits, target audience, etc."
+                                />
+                                <BootstrapForm.Text className="text-muted">
+                                  Provide details about your product to generate an SEO-optimized description
+                                </BootstrapForm.Text>
+                              </BootstrapForm.Group>
+                              
+                              <Button 
+                                variant="outline-info"
+                                disabled={!seoInput.trim() || generatingDescription}
+                                onClick={() => generateSEODescription(values.name)}
+                                className="me-2"
+                              >
+                                {generatingDescription ? (
+                                  <Spinner as="span" animation="border" size="sm" />
+                                ) : (
+                                  <>
+                                    <FaMagic className="me-1" /> Generate SEO Description
+                                  </>
+                                )}
+                              </Button>
+                              
+                              {showDescription && (
+                                <div className="mt-3">
+                                  <BootstrapForm.Label>Generated Description:</BootstrapForm.Label>
+                                  <Card className="bg-light">
+                                    <Card.Body>
+                                      <p className="mb-2">{generatedDescription}</p>
+                                      <div className="d-flex gap-2">
+                                        <Button 
+                                          variant="outline-primary" 
+                                          size="sm"
+                                          onClick={copyDescriptionToClipboard}
+                                        >
+                                          <FaCopy className="me-1" /> Copy Description
+                                        </Button>
+                                        <Button 
+                                          variant="outline-success" 
+                                          size="sm"
+                                          onClick={() => applyDescription(setFieldValue)}
+                                        >
+                                          Apply to Description
+                                        </Button>
+                                      </div>
+                                    </Card.Body>
+                                  </Card>
+                                </div>
+                              )}
+                            </Card.Body>
+                          </Card>
                         </Card.Body>
                       </Card>
 

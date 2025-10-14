@@ -9,3 +9,4 @@ export {default as NotificationsPage } from './NotificationsPage.jsx';
 export {default as AdminProductAdd } from './AdminProductAdd.jsx';
 export {default as CustomerDetails } from './CustomerDetail.jsx';
 export {default as OrderDetail } from './OrderDetail.jsx';
+export {default as Settings } from './Settings.jsx';

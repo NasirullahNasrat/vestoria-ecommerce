@@ -277,7 +277,65 @@ class CustomerCreateUpdateSerializer(serializers.ModelSerializer):
 
 User = get_user_model()
 
+# class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+#     @classmethod
+#     def get_token(cls, user):
+#         token = super().get_token(user)
+#         # Add custom claims
+#         token['is_customer'] = user.is_customer
+#         token['is_vendor'] = user.is_vendor
+#         token['username'] = user.username
+#         return token
+
+
+from django.contrib.auth import authenticate
+from django.utils.translation import gettext_lazy as _
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Allow authentication with either username or email
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        # Try to authenticate with username first, then with email
+        user = authenticate(
+            request=self.context.get('request'),
+            username=username,
+            password=password
+        )
+        
+        # If username authentication failed, try email
+        if user is None:
+            try:
+                user_obj = User.objects.get(email=username)
+                user = authenticate(
+                    request=self.context.get('request'),
+                    username=user_obj.username,
+                    password=password
+                )
+            except User.DoesNotExist:
+                pass
+        
+        if user:
+            if not user.is_active:
+                raise serializers.ValidationError(_("User account is disabled."))
+            
+            refresh = self.get_token(user)
+            data = {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'is_customer': user.is_customer,
+                    'is_vendor': user.is_vendor
+                }
+            }
+            return data
+        else:
+            raise serializers.ValidationError(_("Unable to log in with provided credentials."))
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -286,6 +344,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['is_vendor'] = user.is_vendor
         token['username'] = user.username
         return token
+
+
+
+
+
+
+
+
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -327,6 +393,51 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
         
 
 
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'phone', 'is_vendor', 'is_customer']
+        read_only_fields = ['email']  # Make email read-only if needed
+    
+    def update(self, instance, validated_data):
+        # Handle the update without password fields
+        instance.username = validated_data.get('username', instance.username)
+        instance.phone = validated_data.get('phone', instance.phone)
+        instance.is_vendor = validated_data.get('is_vendor', instance.is_vendor)
+        instance.is_customer = validated_data.get('is_customer', instance.is_customer)
+        instance.save()
+        return instance
+
+
+
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    confirm_password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("New passwords don't match")
+        
+        # Validate password strength
+        try:
+            validate_password(data['new_password'])
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        
+        return data
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect")
+        return value
 
 
 
@@ -661,3 +772,40 @@ class ProductReviewCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return review
+    
+
+
+
+
+class SystemSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemSettings
+        fields = [
+            'id', 'page_name', 'logo', 'ai_api_key', 'public_key', 'ap_api_url',
+            'stripe_secret_key', 'stripe_public_key', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate_ai_api_key(self, value):
+        # Allow empty values
+        if not value:
+            return value
+        if len(value) < 10:
+            raise serializers.ValidationError("API key seems too short")
+        return value
+    
+    def validate_stripe_secret_key(self, value):
+        # Allow empty values
+        if not value:
+            return value
+        if not value.startswith('sk_'):
+            raise serializers.ValidationError("Stripe secret key should start with 'sk_'")
+        return value
+    
+    def validate_stripe_public_key(self, value):
+        # Allow empty values
+        if not value:
+            return value
+        if not value.startswith('pk_'):
+            raise serializers.ValidationError("Stripe public key should start with 'pk_'")
+        return value

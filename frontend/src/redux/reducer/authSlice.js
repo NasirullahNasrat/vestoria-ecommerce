@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { getApiUrl } from '../../config/env'; // Import the environment utility
 
 const initialState = {
   user: null,
@@ -13,15 +14,20 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('http://localhost:8000/api/token/', {
+      // Use environment-based URL for token endpoint
+      const tokenUrl = getApiUrl('/api/token/');
+      const response = await axios.post(tokenUrl, {
         username,
         password
       });
       
       const { access, refresh } = response.data;
       
+      // Use environment-based URL for profile endpoint
+      const profileUrl = getApiUrl('/api/user/profile/');
+      
       // Get user profile
-      const profileResponse = await axios.get('http://localhost:8000/api/user/profile/', {
+      const profileResponse = await axios.get(profileUrl, {
         headers: { Authorization: `Bearer ${access}` }
       });
       

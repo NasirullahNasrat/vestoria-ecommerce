@@ -6,6 +6,7 @@ import { FaUsers, FaDollarSign, FaShoppingCart, FaTicketAlt } from 'react-icons/
 import { isAuthenticated, logout, getAccessToken } from '../utils/adminAuth';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -60,8 +61,13 @@ const Dashboard = () => {
         throw new Error('No authentication token found');
       }
 
+      // Use environment configuration for API URLs
+      const statsApiUrl = getApiUrl('/api/admin/dashboard-stats/');
+      const ordersApiUrl = getApiUrl('/api/orders/?limit=5');
+      const activityApiUrl = getApiUrl('/api/admin/recent-activity/');
+
       // Fetch dashboard stats
-      const statsResponse = await axios.get('http://localhost:8000/api/admin/dashboard-stats/', {
+      const statsResponse = await axios.get(statsApiUrl, {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -77,7 +83,7 @@ const Dashboard = () => {
 
       // Fetch recent orders
       try {
-        const ordersResponse = await axios.get('http://localhost:8000/api/orders/?limit=5', {
+        const ordersResponse = await axios.get(ordersApiUrl, {
           headers: {
             Authorization: `Bearer ${token}`
           },
@@ -96,7 +102,7 @@ const Dashboard = () => {
 
       // Fetch recent activity
       try {
-        const activityResponse = await axios.get('http://localhost:8000/api/admin/recent-activity/', {
+        const activityResponse = await axios.get(activityApiUrl, {
           headers: {
             Authorization: `Bearer ${token}`
           },

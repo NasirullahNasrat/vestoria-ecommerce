@@ -43,6 +43,7 @@ import {
 import AdminNavbar from "./AdminNavbar";
 import { logout } from "../redux/reducer/authSlice";
 import { getAccessToken, isAuthenticated, isAdmin, logout as adminLogout } from "../utils/adminAuth";
+import { getApiUrl } from "../config/env";
 
 const OrderDetail = () => {
   const [order, setOrder] = useState(null);
@@ -108,7 +109,8 @@ const OrderDetail = () => {
         throw new Error('No authentication token found');
       }
       
-      const response = await fetch(`http://localhost:8000/api/orders/admin/${id}/`, {
+      const apiUrl = getApiUrl(`/api/orders/admin/${id}/`);
+      const response = await fetch(apiUrl, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -178,7 +180,8 @@ const OrderDetail = () => {
         throw new Error('No authentication token found');
       }
       
-      const response = await fetch(`http://localhost:8000/api/admin/customers/${customerId}/`, {
+      const apiUrl = getApiUrl(`/api/admin/customers/${customerId}/`);
+      const response = await fetch(apiUrl, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -213,7 +216,8 @@ const OrderDetail = () => {
       
       setUpdating(true);
       
-      const response = await fetch(`http://localhost:8000/api/orders/admin/${id}/`, {
+      const apiUrl = getApiUrl(`/api/orders/admin/${id}/`);
+      const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

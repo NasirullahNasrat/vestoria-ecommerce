@@ -4,6 +4,7 @@ import axios from "axios";
 import { FaStar } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
+import { getApiUrl } from "../config/env"; // Import the environment utility
 
 const ReviewSection = ({ productId, reviews, onReviewAdded, loading }) => {
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -34,8 +35,11 @@ const ReviewSection = ({ productId, reviews, onReviewAdded, loading }) => {
 
     setIsSubmitting(true);
     try {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl(`/api/products/${productId}/reviews/create/`);
+      
       const response = await axios.post(
-        `http://localhost:8000/api/products/${productId}/reviews/create/`,
+        apiUrl,
         { rating, title, content },
         {
           headers: {

@@ -10,6 +10,7 @@ import { Footer, Navbar } from "../components";
 import ReviewSection from "../components/ReviewSection"; // Direct import
 import toast from "react-hot-toast";
 import { FaStar, FaArrowLeft } from "react-icons/fa";
+import { getApiUrl } from "../config/env"; // Import the environment utility
 
 const Product = () => {
   const { id } = useParams();
@@ -81,15 +82,17 @@ const Product = () => {
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/300x300?text=No+Image';
     if (imagePath.startsWith('http')) return imagePath;
-    return `http://localhost:8000${imagePath}`;
+    // Use environment-based URL instead of hardcoded localhost
+    return getApiUrl(imagePath);
   };
 
   const fetchReviews = async () => {
     try {
       setReviewsLoading(true);
-      const response = await axios.get(
-        `http://localhost:8000/api/products/${id}/reviews/`
-      );
+      // Use environment-based URL instead of hardcoded localhost
+      const reviewsApiUrl = getApiUrl(`/api/products/${id}/reviews/`);
+      
+      const response = await axios.get(reviewsApiUrl);
       
       console.log("Reviews API response:", response.data);
       console.log("Type of response:", typeof response.data);
@@ -121,16 +124,18 @@ const Product = () => {
         setLoading2(true);
         setError(null);
         
-        const response = await axios.get(`http://localhost:8000/api/products/id/${id}/`);
+        // Use environment-based URL instead of hardcoded localhost
+        const productApiUrl = getApiUrl(`/api/products/id/${id}/`);
+        const response = await axios.get(productApiUrl);
         setProduct(response.data);
         
         // Fetch reviews after product data is loaded
         await fetchReviews();
         
         if (response.data.category?.id) {
-          const similarResponse = await axios.get(
-            `http://localhost:8000/api/products/?category=${response.data.category.id}`
-          );
+          // Use environment-based URL instead of hardcoded localhost
+          const similarProductsApiUrl = getApiUrl(`/api/products/?category=${response.data.category.id}`);
+          const similarResponse = await axios.get(similarProductsApiUrl);
           const filtered = similarResponse.data.results?.filter(
             item => item.id.toString() !== id.toString()
           ) || [];

@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { FaTrash, FaMinus, FaPlus, FaShoppingBag } from "react-icons/fa";
+import { getApiUrl } from "../config/env"; // Import the environment utility
 
 const Cart = () => {
     const cartState = useSelector((state) => ({
@@ -32,7 +33,8 @@ const Cart = () => {
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
-        return `http://localhost:8000${imagePath}`;
+        
+        return getApiUrl(imagePath);
     };
 
     const getProductData = (item) => {

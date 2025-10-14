@@ -4,6 +4,7 @@ import { loadUser, logout } from '../redux/reducer/authSlice';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const InitializeAuth = () => {
   const dispatch = useDispatch();
@@ -20,11 +21,13 @@ const InitializeAuth = () => {
       }
 
       try {
-        // Option 1: Verify token explicitly
-        await axios.post('http://localhost:8000/api/token/verify/', { token });
+        // Option 1: Verify token explicitly using environment configuration
+        const verifyUrl = getApiUrl('/api/token/verify/');
+        await axios.post(verifyUrl, { token });
         
-        // Token is valid, load user data
-        const response = await axios.get('http://localhost:8000/api/user/profile/', {
+        // Token is valid, load user data using environment configuration
+        const profileUrl = getApiUrl('/api/user/profile/');
+        const response = await axios.get(profileUrl, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -39,15 +42,17 @@ const InitializeAuth = () => {
         // Try to refresh token if we have a refresh token
         if (refreshToken && error.response?.status === 401) {
           try {
-            const refreshResponse = await axios.post('http://localhost:8000/api/token/refresh/', {
+            const refreshUrl = getApiUrl('/api/token/refresh/');
+            const refreshResponse = await axios.post(refreshUrl, {
               refresh: refreshToken
             });
             
             const newToken = refreshResponse.data.access;
             localStorage.setItem('accessToken', newToken);
             
-            // Retry with new token
-            const userResponse = await axios.get('http://localhost:8000/api/user/profile/', {
+            // Retry with new token using environment configuration
+            const profileUrl = getApiUrl('/api/user/profile/');
+            const userResponse = await axios.get(profileUrl, {
               headers: { Authorization: `Bearer ${newToken}` }
             });
             

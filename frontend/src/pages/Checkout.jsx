@@ -7,9 +7,41 @@ import { formatCurrency } from './formatCurrency';
 import './Checkout.css';
 import { Footer, Navbar } from "../components";
 
-const Checkout = () => {
+// Stripe imports
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Import environment utility
+import { getApiUrl } from '../config/env';
+
+// Function to fetch system settings from Django backend
+const fetchSystemSettings = async () => {
+  try {
+    const response = await fetch(getApiUrl('/api/system-settings/'), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch system settings');
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching system settings:', error);
+    return null;
+  }
+};
+
+// CheckoutForm component
+const CheckoutForm = ({ stripePromise }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const stripe = useStripe();
+  const elements = useElements();
   
   // Get state from Redux
   const { items } = useSelector((state) => state.cart);
@@ -33,19 +65,72 @@ const Checkout = () => {
     billing_country: 'US',
     use_shipping_for_billing: true,
     payment_method: 'credit_card',
-    card_number: '',
-    card_expiry: '',
-    card_cvc: '',
     notes: '',
   });
 
   const [errors, setErrors] = useState({});
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [clientSecret, setClientSecret] = useState('');
+  const [stripeProcessing, setStripeProcessing] = useState(false);
+  const [stripeError, setStripeError] = useState(null);
+  const [paymentIntentCreated, setPaymentIntentCreated] = useState(false);
 
-  // Debug cart items
+  // Create payment intent when component mounts or items change
   useEffect(() => {
-    console.log('Current cart items:', items);
-  }, [items]);
+    if (items.length > 0 && formData.payment_method === 'credit_card' && !paymentIntentCreated) {
+      createPaymentIntent();
+    }
+  }, [items, formData.payment_method, paymentIntentCreated]);
+
+  const createPaymentIntent = async () => {
+    try {
+      setStripeError(null);
+      const totalAmount = calculateTotal();
+      
+      // Only create payment intent if we have items and a valid amount
+      if (items.length === 0 || totalAmount <= 0) {
+        console.error('Cannot create payment intent: No items or invalid amount');
+        return;
+      }
+
+      console.log('Creating payment intent with items:', items);
+      
+      // Use environment configuration for API URLs
+      const paymentIntentApiUrl = getApiUrl('/api/create-payment-intent/');
+      
+      const response = await fetch(paymentIntentApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          items: items,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setPaymentIntentCreated(true);
+        console.log('Payment intent created successfully');
+        setStripeError(null);
+      } else {
+        console.error('Failed to create payment intent: No client secret in response', data);
+        setStripeError('Failed to initialize payment. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      setStripeError(`Error initializing payment: ${error.message}. Please check your connection and try again.`);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,6 +139,13 @@ const Checkout = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
+    // If payment method changes, reset payment intent
+    if (name === 'payment_method') {
+      setPaymentIntentCreated(false);
+      setClientSecret('');
+      setStripeError(null);
+    }
 
     if (errors[name]) {
       setErrors(prev => {
@@ -115,17 +207,9 @@ const Checkout = () => {
       }
     }
 
-    // Payment validation
-    if (formData.payment_method === 'credit_card') {
-      if (!formData.card_number.trim() || formData.card_number.replace(/\s/g, '').length !== 16) {
-        errors.card_number = 'Valid card number is required';
-      }
-      if (!formData.card_expiry.trim() || !/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(formData.card_expiry)) {
-        errors.card_expiry = 'Valid expiry date (MM/YY) is required';
-      }
-      if (!formData.card_cvc.trim() || formData.card_cvc.length < 3) {
-        errors.card_cvc = 'Valid CVC is required';
-      }
+    // For credit card payments, ensure we have a client secret
+    if (formData.payment_method === 'credit_card' && !clientSecret) {
+      errors.payment = 'Payment system not ready. Please try again.';
     }
 
     return errors;
@@ -140,6 +224,15 @@ const Checkout = () => {
       return;
     }
 
+    // For credit card payments, ensure we have a valid client secret
+    if (formData.payment_method === 'credit_card') {
+      if (!clientSecret || !clientSecret.includes('_secret_')) {
+        setStripeError('Payment system not initialized. Please try again.');
+        await createPaymentIntent(); // Try to create payment intent again
+        return;
+      }
+    }
+
     // Show confirmation popup instead of submitting directly
     setShowConfirmation(true);
   };
@@ -147,6 +240,64 @@ const Checkout = () => {
   const confirmOrder = async () => {
     setShowConfirmation(false);
     
+    if (formData.payment_method === 'credit_card') {
+      // Process Stripe payment for credit card
+      await processStripePayment();
+    } else {
+      // Process other payment methods normally
+      await processOrder();
+    }
+  };
+
+  const processStripePayment = async () => {
+    if (!stripe || !elements) {
+      setStripeError('Payment system not ready. Please refresh the page.');
+      return;
+    }
+
+    // Double-check we have a valid client secret
+    if (!clientSecret || !clientSecret.includes('_secret_')) {
+      setStripeError('Payment authorization failed. Please try again.');
+      return;
+    }
+
+    setStripeProcessing(true);
+    setStripeError(null);
+
+    try {
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: {
+            name: `${formData.shipping_first_name} ${formData.shipping_last_name}`,
+            email: user?.email,
+            address: {
+              line1: formData.shipping_address,
+              city: formData.shipping_city,
+              state: formData.shipping_state,
+              postal_code: formData.shipping_zip,
+              country: formData.shipping_country,
+            },
+          },
+        }
+      });
+
+      if (stripeError) {
+        setStripeError(stripeError.message);
+        setStripeProcessing(false);
+      } else {
+        console.log('Payment succeeded:', paymentIntent);
+        // Payment succeeded, create order with Stripe payment ID
+        await processOrder(paymentIntent.id);
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      setStripeError('An unexpected error occurred. Please try again.');
+      setStripeProcessing(false);
+    }
+  };
+
+  const processOrder = async (paymentIntentId = null) => {
     // Prepare order items in correct format for backend
     const orderItems = items.map(item => {
       const product = item.product_details || item.product || item;
@@ -156,8 +307,6 @@ const Checkout = () => {
         price: product.current_price || product.price
       };
     });
-
-    console.log('Prepared order items:', orderItems);
 
     const orderData = {
       shipping_address: {
@@ -195,24 +344,26 @@ const Checkout = () => {
             default: true,
           },
       payment_method: formData.payment_method,
+      payment_intent_id: paymentIntentId, // Include Stripe payment ID if available
       notes: formData.notes,
       items: orderItems
     };
 
     try {
-      console.log('Submitting order with data:', orderData);
-      
       const result = await dispatch(createOrder(orderData));
       
       if (createOrder.fulfilled.match(result)) {
-        console.log('Order created successfully:', result.payload);
         await dispatch(clearCart());
         navigate(`/order-confirmation/${result.payload.id}`);
       } else if (createOrder.rejected.match(result)) {
         console.error('Order creation failed:', result.error);
+        setStripeError('Order creation failed. Please try again.');
       }
     } catch (error) {
       console.error('Error in order submission:', error);
+      setStripeError('An error occurred while creating your order.');
+    } finally {
+      setStripeProcessing(false);
     }
   };
 
@@ -246,6 +397,24 @@ const Checkout = () => {
       navigate('/cart');
     }
   }, [items, loading, checkoutStatus, navigate]);
+
+  // Card element styling
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#424770',
+        '::placeholder': {
+          color: '#aab7c4',
+        },
+        padding: '10px 12px',
+      },
+      invalid: {
+        color: '#9e2146',
+      },
+    },
+    hidePostalCode: true,
+  };
 
   return (
     <>
@@ -497,58 +666,34 @@ const Checkout = () => {
                 value={formData.payment_method}
                 onChange={handleChange}
               >
-                <option value="credit_card">Credit Card</option>
+                <option value="credit_card">Credit Card (Stripe)</option>
                 <option value="paypal">PayPal</option>
                 <option value="bank_transfer">Bank Transfer</option>
               </select>
             </div>
             
             {formData.payment_method === 'credit_card' && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="card_number">Card Number</label>
-                  <input
-                    type="text"
-                    id="card_number"
-                    name="card_number"
-                    value={formData.card_number}
-                    onChange={handleChange}
-                    placeholder="1234 5678 9012 3456"
-                    className={errors.card_number ? 'error' : ''}
-                  />
-                  {errors.card_number && <p className="error-message">{errors.card_number}</p>}
+              <div className="stripe-card-element">
+                <label>Card Details</label>
+                <div className="card-element-wrapper">
+                  <CardElement options={cardElementOptions} />
                 </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="card_expiry">Expiry Date</label>
-                    <input
-                      type="text"
-                      id="card_expiry"
-                      name="card_expiry"
-                      value={formData.card_expiry}
-                      onChange={handleChange}
-                      placeholder="MM/YY"
-                      className={errors.card_expiry ? 'error' : ''}
-                    />
-                    {errors.card_expiry && <p className="error-message">{errors.card_expiry}</p>}
+                {!clientSecret && !stripeError && (
+                  <p className="info-message">Initializing payment system...</p>
+                )}
+                {stripeError && <p className="error-message">{stripeError}</p>}
+                {clientSecret && (
+                  <div className="stripe-test-cards">
+                    <p className="test-card-notice">Test using Stripe test cards:</p>
+                    <ul>
+                      <li>Success: <code>4242 4242 4242 4242</code></li>
+                      <li>Authentication: <code>4000 0025 0000 3155</code></li>
+                      <li>Declined: <code>4000 0000 0000 9995</code></li>
+                    </ul>
+                    <p>Use any future expiration date, any 3-digit CVC</p>
                   </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="card_cvc">CVC</label>
-                    <input
-                      type="text"
-                      id="card_cvc"
-                      name="card_cvc"
-                      value={formData.card_cvc}
-                      onChange={handleChange}
-                      placeholder="123"
-                      className={errors.card_cvc ? 'error' : ''}
-                    />
-                    {errors.card_cvc && <p className="error-message">{errors.card_cvc}</p>}
-                  </div>
-                </div>
-              </>
+                )}
+              </div>
             )}
             
             <div className="form-group">
@@ -562,12 +707,16 @@ const Checkout = () => {
               />
             </div>
             
+            {errors.payment && <p className="error-message">{errors.payment}</p>}
+            
             <button 
               type="submit" 
               className="checkout-button"
-              disabled={loading || items.length === 0}
+              disabled={loading || items.length === 0 || stripeProcessing || 
+                        (formData.payment_method === 'credit_card' && !clientSecret)}
             >
-              {loading ? 'Processing...' : 'Place Order'}
+              {stripeProcessing ? 'Processing Payment...' : 
+               loading ? 'Processing...' : 'Place Order'}
             </button>
           </form>
           
@@ -635,15 +784,16 @@ const Checkout = () => {
                 type="button" 
                 className="confirm-button"
                 onClick={confirmOrder}
-                disabled={loading}
+                disabled={loading || stripeProcessing}
               >
-                {loading ? 'Processing...' : 'Yes, Place Order'}
+                {stripeProcessing ? 'Processing Payment...' : 
+                 loading ? 'Processing...' : 'Yes, Place Order'}
               </button>
               <button 
                 type="button" 
                 className="cancel-button"
                 onClick={() => setShowConfirmation(false)}
-                disabled={loading}
+                disabled={loading || stripeProcessing}
               >
                 Cancel
               </button>
@@ -652,6 +802,61 @@ const Checkout = () => {
         </div>
       )}
     </>
+  );
+};
+
+// Main Checkout component that handles Stripe initialization
+const Checkout = () => {
+  const [stripePromise, setStripePromise] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const initializeStripe = async () => {
+      try {
+        // Fetch system settings from Django backend
+        const settings = await fetchSystemSettings();
+        
+        if (settings && settings.stripe_public_key) {
+          // Initialize Stripe with the key from backend
+          console.log('Using Stripe key from backend:', settings.stripe_public_key);
+          setStripePromise(loadStripe(settings.stripe_public_key));
+        } else {
+          // Fallback to environment variable or test key
+          const fallbackKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_51S5IjaF2fW22sCzYrpYUBRIfboIpZafZ87BPlUKNZX5l4XMmZek5QfCC8hjtNBjgaZP4LzThiS2ESBO5ZM2Z39oT00MY8FjNKB';
+          console.log('Using fallback Stripe key');
+          setStripePromise(loadStripe(fallbackKey));
+        }
+      } catch (error) {
+        console.error('Error initializing Stripe:', error);
+        // Fallback to environment variable or test key
+        const fallbackKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_51S5IjaF2fW22sCzYrpYUBRIfboIpZafZ87BPlUKNZX5l4XMmZek5QfCC8hjtNBjgaZP4LzThiS2ESBO5ZM2Z39oT00MY8FjNKB';
+        setStripePromise(loadStripe(fallbackKey));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeStripe();
+  }, []);
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="checkout-page-container">
+          <div className="loading-message">
+            <p>Loading payment system...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  return (
+    <Elements stripe={stripePromise}>
+      <CheckoutForm stripePromise={stripePromise} />
+    </Elements>
   );
 };
 

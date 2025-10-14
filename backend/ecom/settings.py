@@ -250,3 +250,9 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 
 # For development only - remove in production
 CORS_ALLOW_ALL_ORIGINS = True
+
+
+# Stripe configuration
+
+STRIPE_WEBHOOK_SECRET = 'your-webhook-secret'  # For webhooks later
+

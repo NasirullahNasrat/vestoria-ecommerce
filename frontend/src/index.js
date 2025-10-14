@@ -28,7 +28,7 @@ import InitializeAuth from "./components/InitializeAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminProtectedRoute from "./components/AdminProtectedRoute"; // Add this import
 import { Dashboard, AdminLogin } from "./admin";
-import { UsersList, AdminProductsList, EditProduct, ProfilePage, AdminOrdersList, NotificationsPage, AdminProductAdd, CustomerDetails, OrderDetail } from "./admin";
+import { UsersList, AdminProductsList, EditProduct, ProfilePage, AdminOrdersList, NotificationsPage, AdminProductAdd, CustomerDetails, OrderDetail, Settings } from "./admin";
 
 // Admin layout wrapper
 const AdminLayout = () => {
@@ -80,6 +80,7 @@ root.render(
                 <Route path="orders/:id" element={<OrderDetail />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="add-product" element={<AdminProductAdd />} />
+                <Route path="settings" element={<Settings />} />
               </Route>
             </Route>
 

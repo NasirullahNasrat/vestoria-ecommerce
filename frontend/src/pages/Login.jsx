@@ -6,7 +6,7 @@ import { loginUser } from "../redux/reducer/authSlice";
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
   });
   const [error, setError] = useState(null);
@@ -29,6 +29,7 @@ const Login = () => {
     });
   };
 
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -36,18 +37,18 @@ const Login = () => {
   
     try {
       await dispatch(loginUser({
-        username: formData.username,
+        username: formData.email,  // Send email as username
+        email: formData.email,     // Also send email separately if needed
         password: formData.password
       })).unwrap();
       
       navigate("/");
     } catch (err) {
-      setError(err.payload || "Invalid username or password");
+      setError(err.payload || "Invalid email or password");
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <>
       <Navbar />
@@ -63,14 +64,14 @@ const Login = () => {
             )}
             <form onSubmit={handleSubmit}>
               <div className="form my-3">
-                <label htmlFor="username">Username</label>
+                <label htmlFor="email">Email Address</label>
                 <input
-                  type="text"
+                  type="email"
                   className="form-control"
-                  id="username"
-                  name="username"
-                  placeholder="Enter your username"
-                  value={formData.username}
+                  id="email"
+                  name="email"
+                  placeholder="Enter your email address"
+                  value={formData.email}
                   onChange={handleChange}
                   required
                 />
@@ -82,7 +83,7 @@ const Login = () => {
                   className="form-control"
                   id="password"
                   name="password"
-                  placeholder="Password"
+                  placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
                   required
@@ -90,6 +91,7 @@ const Login = () => {
               </div>
               <div className="my-3">
                 <p>New Here? <Link to="/register" className="text-decoration-underline text-info">Register</Link> </p>
+                <p>Forgot Password? <Link to="/forgot-password" className="text-decoration-underline text-info">Reset it here</Link></p>
               </div>
               <div className="text-center">
                 <button 
@@ -97,7 +99,12 @@ const Login = () => {
                   type="submit"
                   disabled={loading}
                 >
-                  {loading ? "Logging in..." : "Login"}
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Logging in...
+                    </>
+                  ) : "Login"}
                 </button>
               </div>
             </form>

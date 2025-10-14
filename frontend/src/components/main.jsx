@@ -14,19 +14,19 @@ const Home = () => {
       image: image1,
       title: "New Season Arrivals",
       text: "Discover our latest collection for the upcoming season",
-      link: "/new-arrivals"
+      link: "/products"
     },
     {
       image: image2,
       title: "Summer Sale",
       text: "Up to 50% off on selected items. Limited time only!",
-      link: "/summer-sale"
+      link: "/products"
     },
     {
       image: image3,
       title: "Exclusive Collection",
       text: "Shop our designer exclusives available only here",
-      link: "/exclusives"
+      link: "/products"
     }
   ];
 

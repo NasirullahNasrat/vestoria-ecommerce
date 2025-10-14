@@ -27,8 +27,7 @@ import { logout, getAccessToken, getRefreshToken, setTokens, clearTokens } from 
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const AdminNavbar = ({ children, activePage }) => {
   const navigate = useNavigate();
@@ -41,7 +40,7 @@ const AdminNavbar = ({ children, activePage }) => {
   // Create axios instance with interceptors for token refresh
   const createApiClient = () => {
     const api = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: getApiUrl(), // Use environment-based URL
       headers: {
         'Content-Type': 'application/json'
       }
@@ -74,8 +73,11 @@ const AdminNavbar = ({ children, activePage }) => {
               throw new Error('No refresh token available');
             }
 
+            // Use environment-based URL for token refresh
+            const tokenRefreshUrl = getApiUrl('/api/token/refresh/');
+            
             const refreshResponse = await axios.post(
-              `${API_BASE_URL}/api/token/refresh/`,
+              tokenRefreshUrl,
               { refresh: refreshTokenValue }
             );
             
@@ -108,7 +110,11 @@ const AdminNavbar = ({ children, activePage }) => {
     try {
       setLoadingNotifications(true);
       const api = createApiClient();
-      const response = await api.get('/api/notifications/?limit=5');
+      
+      // Use environment-based URL for notifications
+      const notificationsUrl = getApiUrl('/api/notifications/?limit=5');
+      
+      const response = await api.get(notificationsUrl);
       
       // Handle different response formats
       let notificationsData = [];
@@ -139,7 +145,11 @@ const AdminNavbar = ({ children, activePage }) => {
   const fetchUnreadCount = async () => {
     try {
       const api = createApiClient();
-      const response = await api.get('/api/notifications/unread-count/');
+      
+      // Use environment-based URL for unread count
+      const unreadCountUrl = getApiUrl('/api/notifications/unread-count/');
+      
+      const response = await api.get(unreadCountUrl);
       setUnreadCount(response.data.count);
     } catch (err) {
       console.error('Error fetching unread count:', err);
@@ -151,7 +161,11 @@ const AdminNavbar = ({ children, activePage }) => {
     e.stopPropagation();
     try {
       const api = createApiClient();
-      await api.post(`/api/notifications/${id}/read/`);
+      
+      // Use environment-based URL for mark as read
+      const markReadUrl = getApiUrl(`/api/notifications/${id}/read/`);
+      
+      await api.post(markReadUrl);
       setNotifications(notifications.map(n => 
         n.id === id ? { ...n, is_read: true } : n
       ));
@@ -166,7 +180,11 @@ const AdminNavbar = ({ children, activePage }) => {
     e.stopPropagation();
     try {
       const api = createApiClient();
-      await api.delete(`/api/notifications/${id}/`);
+      
+      // Use environment-based URL for delete notification
+      const deleteNotificationUrl = getApiUrl(`/api/notifications/${id}/`);
+      
+      await api.delete(deleteNotificationUrl);
       setNotifications(notifications.filter(n => n.id !== id));
       toast.success('Notification deleted');
     } catch (err) {

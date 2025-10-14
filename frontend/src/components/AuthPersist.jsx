@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '../redux/reducer/authSlice';
 import axios from 'axios';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const AuthPersist = () => {
   const dispatch = useDispatch();
@@ -13,8 +14,9 @@ const AuthPersist = () => {
       
       if (token && user) {
         try {
-          // Verify token is still valid
-          await axios.post("http://localhost:8000/api/token/verify/", { token });
+          // Verify token is still valid using environment configuration
+          const verifyUrl = getApiUrl('/api/token/verify/');
+          await axios.post(verifyUrl, { token });
           dispatch(loginSuccess(user));
         } catch (error) {
           // Token is invalid, clear storage

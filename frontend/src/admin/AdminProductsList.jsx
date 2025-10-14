@@ -22,6 +22,7 @@ import {
   logout, 
   isAdmin
 } from "../utils/adminAuth";
+import { getApiUrl } from "../config/env"; // Import the environment utility
 
 const AdminProductsList = () => {
   const [products, setProducts] = useState([]);
@@ -86,7 +87,10 @@ const AdminProductsList = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch("http://localhost:8000/api/products/", {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/products/');
+      
+      const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -140,7 +144,10 @@ const AdminProductsList = () => {
           onClick: async () => {
             try {
               const token = getAccessToken();
-              const response = await fetch(`http://localhost:8000/api/products/${productId}/`, {
+              // Use environment configuration for API URL
+              const apiUrl = getApiUrl(`/api/products/${productId}/`);
+              
+              const response = await fetch(apiUrl, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -203,6 +210,20 @@ const AdminProductsList = () => {
     fetchProducts();
   };
 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/50x50?text=No+Image';
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // Use environment configuration for image URLs
+    const baseUrl = process.env.REACT_APP_API_URL || getApiUrl();
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanImagePath = imagePath.replace(/^\//, '');
+    
+    return `${cleanBaseUrl}/${cleanImagePath}`;
+  };
+
   const Loading = () => {
     return (
       <div className="table-responsive">
@@ -238,14 +259,6 @@ const AdminProductsList = () => {
         </Table>
       </div>
     );
-  };
-
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/50x50?text=No+Image';
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-    return `http://localhost:8000${imagePath}`;
   };
 
   if (loading && !authChecked) {

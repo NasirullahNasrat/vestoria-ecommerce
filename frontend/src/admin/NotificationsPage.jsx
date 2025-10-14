@@ -38,8 +38,8 @@ import {
   clearTokens
 } from '../utils/adminAuth';
 import AdminNavbar from './AdminNavbar';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
-const API_BASE_URL = 'http://localhost:8000';
 
 const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);
@@ -55,7 +55,7 @@ const NotificationsPage = () => {
   // Create axios instance with interceptors for token refresh
   const createApiClient = () => {
     const api = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: getApiUrl(), // Use environment-based base URL
       headers: {
         'Content-Type': 'application/json'
       }
@@ -93,7 +93,7 @@ const NotificationsPage = () => {
             }
 
             const refreshResponse = await axios.post(
-              `${API_BASE_URL}/api/token/refresh/`,
+              getApiUrl('/api/token/refresh/'), // Use environment-based URL
               { refresh: refreshTokenValue }
             );
             
@@ -141,7 +141,7 @@ const NotificationsPage = () => {
           const refreshTokenValue = getRefreshToken();
           if (refreshTokenValue) {
             const refreshResponse = await axios.post(
-              `${API_BASE_URL}/api/token/refresh/`,
+              getApiUrl('/api/token/refresh/'), // Use environment-based URL
               { refresh: refreshTokenValue }
             );
             setTokens(refreshResponse.data.access, refreshResponse.data.refresh);
@@ -195,7 +195,7 @@ const NotificationsPage = () => {
       }
 
       const api = createApiClient();
-      const response = await api.get('/api/notifications/');
+      const response = await api.get(getApiUrl('/api/notifications/')); // Use environment-based URL
       console.log('Notifications response:', response);
       
       // Handle different response formats
@@ -237,7 +237,7 @@ const NotificationsPage = () => {
   const fetchUnreadCount = async () => {
     try {
       const api = createApiClient();
-      const response = await api.get('/api/notifications/unread-count/');
+      const response = await api.get(getApiUrl('/api/notifications/unread-count/')); // Use environment-based URL
       setUnreadCount(response.data.count);
     } catch (err) {
       console.error('Failed to fetch unread count', err);
@@ -264,7 +264,7 @@ const NotificationsPage = () => {
   const markAsRead = async (id) => {
     try {
       const api = createApiClient();
-      await api.post(`/api/notifications/${id}/read/`);
+      await api.post(getApiUrl(`/api/notifications/${id}/read/`)); // Use environment-based URL
       const updatedNotifications = notifications.map(notification => 
         notification.id === id ? { ...notification, is_read: true } : notification
       );
@@ -286,7 +286,7 @@ const NotificationsPage = () => {
   const markAllAsRead = async () => {
     try {
       const api = createApiClient();
-      await api.post('/api/notifications/read-all/');
+      await api.post(getApiUrl('/api/notifications/read-all/')); // Use environment-based URL
       const updatedNotifications = notifications.map(notification => 
         ({ ...notification, is_read: true })
       );
@@ -308,7 +308,7 @@ const NotificationsPage = () => {
   const deleteNotification = async (id) => {
     try {
       const api = createApiClient();
-      await api.delete(`/api/notifications/${id}/`);
+      await api.delete(getApiUrl(`/api/notifications/${id}/`)); // Use environment-based URL
       const updatedNotifications = notifications.filter(n => n.id !== id);
       setNotifications(updatedNotifications);
       updateUnreadCount(updatedNotifications);

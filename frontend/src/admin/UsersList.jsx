@@ -31,6 +31,7 @@ import {
   logout, 
   isAdmin
 } from "../utils/adminAuth";
+import { getApiUrl } from "../config/env";
 
 const UsersList = () => {
   const [customers, setCustomers] = useState([]);
@@ -94,7 +95,10 @@ const UsersList = () => {
         throw new Error('No authentication token found');
       }
 
-      const url = new URL('http://localhost:8000/api/admin/customers/');
+      // Use environment configuration for API URL
+      const baseUrl = getApiUrl('/api/admin/customers/');
+      const url = new URL(baseUrl);
+      
       const params = {
         search: searchTerm,
         role: filters.role !== 'all' ? filters.role : '',
@@ -169,7 +173,10 @@ const UsersList = () => {
           onClick: async () => {
             try {
               const token = getAccessToken();
-              const response = await fetch(`http://localhost:8000/api/admin/customers/${customerId}/`, {
+              // Use environment configuration for API URL
+              const apiUrl = getApiUrl(`/api/admin/customers/${customerId}/`);
+              
+              const response = await fetch(apiUrl, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -204,7 +211,10 @@ const UsersList = () => {
   const handleStatusChange = async (customerId, newStatus) => {
     try {
       const token = getAccessToken();
-      const response = await fetch(`http://localhost:8000/api/admin/customers/${customerId}/`, {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl(`/api/admin/customers/${customerId}/`);
+      
+      const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { FaUserEdit, FaSave, FaLock, FaEnvelope, FaPhone, FaUser, FaStore } from 'react-icons/fa';
+import { FaUserEdit, FaSave, FaLock, FaEnvelope, FaPhone, FaUser, FaStore, FaTimes } from 'react-icons/fa';
+import { getApiUrl } from '../config/env';
 
 const Profile = () => {
     const dispatch = useDispatch();
@@ -62,8 +63,10 @@ const Profile = () => {
         setLoading(true);
 
         try {
+            const profileApiUrl = getApiUrl('/api/user/profile/');
+            
             const response = await axios.put(
-                'http://localhost:8000/api/profile/',
+                profileApiUrl,
                 formData,
                 {
                     headers: {
@@ -74,10 +77,19 @@ const Profile = () => {
 
             toast.success('Profile updated successfully');
             setIsEditing(false);
-            // You might want to dispatch an action to update user in Redux store here
+            // Dispatch action to update user in Redux store if needed
         } catch (error) {
             console.error('Profile update error:', error);
-            toast.error(error.response?.data?.message || 'Failed to update profile');
+            console.error('Error response:', error.response?.data);
+            
+            if (error.response?.data) {
+                const errorMessages = Object.entries(error.response.data)
+                    .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                    .join('\n');
+                toast.error(errorMessages || 'Failed to update profile');
+            } else {
+                toast.error('Failed to update profile');
+            }
         } finally {
             setLoading(false);
         }
@@ -93,13 +105,21 @@ const Profile = () => {
             return;
         }
 
+        if (passwordForm.new_password.length < 8) {
+            toast.error("Password must be at least 8 characters long");
+            setLoading(false);
+            return;
+        }
+
         try {
+            const passwordChangeApiUrl = getApiUrl('/api/password/change/');
+            
             await axios.post(
-                'http://localhost:8000/api/password/change/',
+                passwordChangeApiUrl,
                 {
-                    old_password: passwordForm.current_password,
-                    new_password1: passwordForm.new_password,
-                    new_password2: passwordForm.confirm_password
+                    current_password: passwordForm.current_password,
+                    new_password: passwordForm.new_password,
+                    confirm_password: passwordForm.confirm_password
                 },
                 {
                     headers: {
@@ -116,7 +136,20 @@ const Profile = () => {
             });
         } catch (error) {
             console.error('Password change error:', error);
-            toast.error(error.response?.data?.message || 'Failed to change password');
+            console.error('Error response:', error.response?.data);
+            
+            if (error.response?.data) {
+                if (typeof error.response.data === 'object') {
+                    const errorMessages = Object.entries(error.response.data)
+                        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                        .join('\n');
+                    toast.error(errorMessages || 'Failed to change password');
+                } else {
+                    toast.error(error.response.data.message || 'Failed to change password');
+                }
+            } else {
+                toast.error('Failed to change password');
+            }
         } finally {
             setLoading(false);
         }
@@ -131,7 +164,7 @@ const Profile = () => {
                         <div className="card shadow-sm">
                             <div className="card-body text-center">
                                 <div className="d-flex justify-content-center mb-3">
-                                    <div className="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style={{ width: '100px', height: '100px' }}>
+                                    <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center" style={{ width: '100px', height: '100px' }}>
                                         <FaUser className="text-white" size={40} />
                                     </div>
                                 </div>
@@ -167,7 +200,7 @@ const Profile = () => {
                                     <h5 className="mb-0">Profile Information</h5>
                                     {!isEditing ? (
                                         <button 
-                                            className="btn btn-sm btn-outline-primary"
+                                            className="btn btn-sm btn-primary"
                                             onClick={() => setIsEditing(true)}
                                         >
                                             <FaUserEdit className="me-1" /> Edit Profile
@@ -177,7 +210,7 @@ const Profile = () => {
                                             className="btn btn-sm btn-outline-secondary"
                                             onClick={() => setIsEditing(false)}
                                         >
-                                            Cancel
+                                            <FaTimes className="me-1" /> Cancel
                                         </button>
                                     )}
                                 </div>
@@ -222,6 +255,7 @@ const Profile = () => {
                                                     name="phone"
                                                     value={formData.phone}
                                                     onChange={handleProfileChange}
+                                                    placeholder="Enter your phone number"
                                                 />
                                             </div>
                                             <div className="mb-3 form-check">
@@ -243,7 +277,14 @@ const Profile = () => {
                                                     className="btn btn-primary"
                                                     disabled={loading}
                                                 >
-                                                    {loading ? 'Saving...' : (
+                                                    {loading ? (
+                                                        <>
+                                                            <div className="spinner-border spinner-border-sm me-2" role="status">
+                                                                <span className="visually-hidden">Loading...</span>
+                                                            </div>
+                                                            Saving...
+                                                        </>
+                                                    ) : (
                                                         <>
                                                             <FaSave className="me-1" /> Save Changes
                                                         </>
@@ -255,19 +296,19 @@ const Profile = () => {
                                         <div>
                                             <div className="mb-3">
                                                 <h6><FaUser className="me-2" /> Username</h6>
-                                                <p>{user?.username}</p>
+                                                <p className="ps-4">{user?.username}</p>
                                             </div>
                                             <div className="mb-3">
                                                 <h6><FaEnvelope className="me-2" /> Email</h6>
-                                                <p>{user?.email}</p>
+                                                <p className="ps-4">{user?.email}</p>
                                             </div>
                                             <div className="mb-3">
                                                 <h6><FaPhone className="me-2" /> Phone</h6>
-                                                <p>{user?.phone || 'Not provided'}</p>
+                                                <p className="ps-4">{user?.phone || 'Not provided'}</p>
                                             </div>
                                             <div className="mb-3">
                                                 <h6><FaStore className="me-2" /> Account Type</h6>
-                                                <p>{user?.is_vendor ? 'Vendor' : 'Customer'}</p>
+                                                <p className="ps-4">{user?.is_vendor ? 'Vendor' : 'Customer'}</p>
                                             </div>
                                         </div>
                                     )}
@@ -291,6 +332,7 @@ const Profile = () => {
                                                 value={passwordForm.current_password}
                                                 onChange={handlePasswordChange}
                                                 required
+                                                placeholder="Enter current password"
                                             />
                                         </div>
                                         <div className="mb-3">
@@ -304,6 +346,8 @@ const Profile = () => {
                                                 value={passwordForm.new_password}
                                                 onChange={handlePasswordChange}
                                                 required
+                                                placeholder="Enter new password (min. 8 characters)"
+                                                minLength={8}
                                             />
                                         </div>
                                         <div className="mb-3">
@@ -317,6 +361,8 @@ const Profile = () => {
                                                 value={passwordForm.confirm_password}
                                                 onChange={handlePasswordChange}
                                                 required
+                                                placeholder="Confirm new password"
+                                                minLength={8}
                                             />
                                         </div>
                                         <div className="d-grid gap-2">
@@ -325,7 +371,14 @@ const Profile = () => {
                                                 className="btn btn-primary"
                                                 disabled={loading}
                                             >
-                                                {loading ? 'Updating...' : 'Change Password'}
+                                                {loading ? (
+                                                    <>
+                                                        <div className="spinner-border spinner-border-sm me-2" role="status">
+                                                            <span className="visually-hidden">Loading...</span>
+                                                        </div>
+                                                        Changing Password...
+                                                    </>
+                                                ) : 'Change Password'}
                                             </button>
                                         </div>
                                     </form>

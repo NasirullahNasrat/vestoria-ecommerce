@@ -34,6 +34,7 @@ import {
   logout, 
   isAdmin
 } from "../utils/adminAuth";
+import { getApiUrl } from "../config/env"; // Add this import
 
 const CustomerDetails = () => {
   const { id } = useParams();
@@ -53,8 +54,11 @@ const CustomerDetails = () => {
       const token = getAccessToken();
       console.log("Fetching orders for user ID:", userId);
       
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/orders/admin/');
+      
       // First try to fetch with user_id parameter
-      const response = await fetch(`http://localhost:8000/api/orders/admin/?user_id=${userId}`, {
+      const response = await fetch(`${apiUrl}?user_id=${userId}`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -85,7 +89,7 @@ const CustomerDetails = () => {
       } else {
         console.error("Orders API error:", response.status, response.statusText);
         // If parameter filtering fails, fetch all orders and filter client-side
-        const allOrdersResponse = await fetch('http://localhost:8000/api/orders/admin/', {
+        const allOrdersResponse = await fetch(apiUrl, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -118,7 +122,10 @@ const CustomerDetails = () => {
       setError(null);
       const token = getAccessToken();
       
-      const response = await fetch(`http://localhost:8000/api/admin/customers/${id}/`, {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl(`/api/admin/customers/${id}/`);
+      
+      const response = await fetch(apiUrl, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -195,7 +202,11 @@ const CustomerDetails = () => {
   const handleSave = async () => {
     try {
       const token = getAccessToken();
-      const response = await fetch(`http://localhost:8000/api/admin/customers/${id}/`, {
+      
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl(`/api/admin/customers/${id}/`);
+      
+      const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -224,7 +235,11 @@ const CustomerDetails = () => {
   const handleDelete = async () => {
     try {
       const token = getAccessToken();
-      const response = await fetch(`http://localhost:8000/api/admin/customers/${id}/`, {
+      
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl(`/api/admin/customers/${id}/`);
+      
+      const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -247,7 +262,11 @@ const CustomerDetails = () => {
   const handleStatusChange = async (newStatus) => {
     try {
       const token = getAccessToken();
-      const response = await fetch(`http://localhost:8000/api/admin/customers/${id}/`, {
+      
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl(`/api/admin/customers/${id}/`);
+      
+      const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,7 +1,8 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { getApiUrl } from '../../config/env'; // Import the environment utility
 
 const baseQuery = fetchBaseQuery({ 
-  baseUrl: 'http://localhost:8000/api',
+  baseUrl: getApiUrl('/api'), // Use environment-based URL
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     if (token) {

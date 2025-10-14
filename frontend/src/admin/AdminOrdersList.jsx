@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   FaSearch, 
@@ -7,7 +7,6 @@ import {
   FaTimes,
   FaEye,
   FaPrint,
-  FaTruck,
   FaSync
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
@@ -29,7 +28,8 @@ import {
   Pagination,
   Alert
 } from 'react-bootstrap';
-import { getAccessToken, isAuthenticated, isAdmin, logout as adminLogout } from "../utils/adminAuth";
+import { getAccessToken, isAuthenticated, isAdmin } from "../utils/adminAuth";
+import { getApiUrl } from "../config/env";
 
 const AdminOrdersList = () => {
   const [orders, setOrders] = useState([]);
@@ -46,6 +46,7 @@ const AdminOrdersList = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
+  const [refreshing, setRefreshing] = useState(false);
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -89,15 +90,18 @@ const AdminOrdersList = () => {
 
   const fetchAllOrders = async () => {
     try {
+      setRefreshing(true);
       setError(null);
-      setLoading(true);
       
       const token = getAccessToken();
       if (!token) {
         throw new Error('No authentication token found');
       }
       
-      const response = await fetch("http://localhost:8000/api/orders/admin/", {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/orders/admin/');
+      
+      const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -142,6 +146,7 @@ const AdminOrdersList = () => {
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -191,17 +196,17 @@ const AdminOrdersList = () => {
             label: 'Yes',
             onClick: async () => {
               try {
-                const response = await fetch(
-                  `http://localhost:8000/api/orders/admin/${orderId}/`, 
-                  {
-                    method: 'PATCH',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                  }
-                );
+                // Use environment configuration for API URL
+                const apiUrl = getApiUrl(`/api/orders/admin/${orderId}/`);
+                
+                const response = await fetch(apiUrl, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ status: newStatus })
+                });
 
                 if (!response.ok) {
                   if (response.status === 401) {
@@ -294,6 +299,7 @@ const AdminOrdersList = () => {
     });
     setSearchTerm('');
     setCurrentPage(1);
+    fetchAllOrders();
   };
 
   const filteredOrders = orders.filter(order => {
@@ -354,45 +360,48 @@ const AdminOrdersList = () => {
     <AdminNavbar activePage="orders">
       <div className="container-fluid py-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>All Customer Orders</h2>
-          <div className="d-flex align-items-center">
-            <span className="me-3">
-              {filteredOrders.length} orders found
-            </span>
-            <Button 
-              variant="outline-primary" 
-              className="me-2"
-              onClick={fetchAllOrders}
-              disabled={loading}
-            >
-              <FaSync className={loading ? "fa-spin" : ""} /> 
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </Button>
+          <div>
+            <h2>All Customer Orders</h2>
+            <p className="text-muted">
+              Showing {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}
+            </p>
           </div>
+          <Button 
+            variant="primary" 
+            onClick={fetchAllOrders}
+            disabled={refreshing}
+          >
+            <FaSync className={refreshing ? 'spin' : ''} />
+            <span className="ms-2">Refresh</span>
+          </Button>
         </div>
 
         <Card className="mb-4">
           <Card.Header className="d-flex justify-content-between align-items-center">
             <h5 className="mb-0">Order Management</h5>
             <div className="d-flex">
-              <InputGroup className="me-3" style={{ width: '300px' }}>
-                <InputGroup.Text>
-                  <FaSearch />
-                </InputGroup.Text>
-                <Form.Control
-                  type="text"
-                  placeholder="Search orders..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                />
-              </InputGroup>
+              <Form onSubmit={(e) => { e.preventDefault(); setCurrentPage(1); }} className="me-3">
+                <InputGroup style={{ width: '300px' }}>
+                  <InputGroup.Text>
+                    <FaSearch />
+                  </InputGroup.Text>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search orders..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
+                  <Button variant="outline-secondary" type="submit">
+                    Search
+                  </Button>
+                </InputGroup>
+              </Form>
               
               <Button 
                 variant={showFilters ? "primary" : "outline-secondary"}
-                className="me-2" 
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <FaFilter className="me-1" /> 
@@ -453,13 +462,20 @@ const AdminOrdersList = () => {
                   />
                 </div>
                 
-                <div className="col-12 d-flex justify-content-end">
+                <div className="col-12 d-flex justify-content-end gap-2">
                   <Button 
                     variant="outline-danger"
                     size="sm"
                     onClick={resetFilters}
                   >
-                    <FaTimes className="me-1" /> Reset Filters
+                    <FaTimes className="me-1" /> Reset All
+                  </Button>
+                  <Button 
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    Apply Filters
                   </Button>
                 </div>
               </div>
@@ -472,7 +488,7 @@ const AdminOrdersList = () => {
                 <h4>Error Loading Orders</h4>
                 <p>{error}</p>
                 <div className="d-flex gap-2 mt-3">
-                  <Button variant="primary" onClick={() => window.location.reload()}>
+                  <Button variant="primary" onClick={fetchAllOrders}>
                     Try Again
                   </Button>
                   <Button variant="secondary" onClick={() => navigate('/admin/dashboard')}>
@@ -530,13 +546,14 @@ const AdminOrdersList = () => {
                           <td>${order.total.toFixed(2)}</td>
                           <td>
                             <div className="d-flex gap-2">
-                              <Link 
-                                to={`/admin/orders/${order.id}`}
-                                className="btn btn-sm btn-outline-primary"
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => navigate(`/admin/orders/${order.id}`)}
                                 title="View Details"
                               >
                                 <FaEye />
-                              </Link>
+                              </Button>
                               
                               <Button
                                 variant="outline-secondary"
@@ -627,6 +644,16 @@ const AdminOrdersList = () => {
           </Card.Body>
         </Card>
       </div>
+
+      <style jsx>{`
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </AdminNavbar>
   );
 };

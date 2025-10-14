@@ -9,7 +9,7 @@ from django.db.models import Q, Sum
 from .models import (
     Product, Customer, Vendor, Address, Category,
     Order, OrderItem, Cart, CartItem, Coupon,
-    ProductImage, ProductReview, Notification
+    ProductImage, ProductReview, Notification, SystemSettings
 )
 from .serializers import (
     ProductSerializer, CustomTokenObtainPairSerializer,
@@ -17,27 +17,45 @@ from .serializers import (
     VendorProfileSerializer, AddressSerializer, CategorySerializer,
     OrderSerializer, OrderItemSerializer, CartSerializer,
     CartItemSerializer, CouponSerializer, ProductImageSerializer,
-    ProductReviewSerializer, NotificationSerializer, ProductReviewSerializer, ProductReviewCreateSerializer
+    ProductReviewSerializer, NotificationSerializer, ProductReviewSerializer, ProductReviewCreateSerializer, SystemSettingsSerializer, UserProfileSerializer, PasswordChangeSerializer
 )
 
 User = get_user_model()
 
 # ==================== Authentication Views ====================
+# class CustomTokenObtainPairView(TokenObtainPairView):
+#     serializer_class = CustomTokenObtainPairSerializer
+
+#     def post(self, request, *args, **kwargs):
+#         response = super().post(request, *args, **kwargs)
+#         if response.status_code == 200:
+#             user = User.objects.get(username=request.data['username'])
+#             response.data['user'] = {
+#                 'id': user.id,
+#                 'username': user.username,
+#                 'email': user.email,
+#                 'is_customer': user.is_customer,
+#                 'is_vendor': user.is_vendor
+#             }
+#         return response
+
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
+        # Modify the request data to use 'username' field for both username and email
+        if 'email' in request.data and 'username' not in request.data:
+            request.data._mutable = True
+            request.data['username'] = request.data['email']
+            request.data._mutable = False
+        
         response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            user = User.objects.get(username=request.data['username'])
-            response.data['user'] = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'is_customer': user.is_customer,
-                'is_vendor': user.is_vendor
-            }
         return response
+
+
+
+
 
 # ==================== Registration Views ====================
 class UserRegistrationView(generics.CreateAPIView):
@@ -135,6 +153,39 @@ class VendorRegistrationView(generics.CreateAPIView):
             "access": str(refresh.access_token),
             "message": "Vendor registered successfully"
         }, status=status.HTTP_201_CREATED)
+
+
+
+
+
+
+
+
+
+class PasswordChangeView(generics.GenericAPIView):
+    serializer_class = PasswordChangeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        new_password = serializer.validated_data['new_password']
+        
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+        
+        return Response(
+            {"message": "Password changed successfully"},
+            status=status.HTTP_200_OK
+        )
+
+
+
+
+
 
 # ==================== Product Views ====================
 class ProductListView(generics.ListAPIView):
@@ -623,20 +674,18 @@ class ProductReviewListView(generics.ListAPIView):
 
 # ==================== User Profile Views ====================
 class UserProfileView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserRegistrationSerializer
+    # Use the new serializer for profile updates
+    serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         return self.request.user
 
-    def update(self, request, *args, **kwargs):
-        # Don't allow updating password through this endpoint
-        if 'password' in request.data:
-            request.data.pop('password')
-        return super().update(request, *args, **kwargs)
-
-
-
+    def get_serializer_class(self):
+        # Use different serializers for different actions if needed
+        if self.request.method == 'PUT' or self.request.method == 'PATCH':
+            return UserProfileSerializer
+        return UserRegistrationSerializer  # For GET requests if needed
 
 
 
@@ -1194,3 +1243,51 @@ class ProductReviewCreateView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED, 
             headers=headers
         )
+    
+
+
+# views.py
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+class SystemSettingsRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+    """
+    View to retrieve and update system settings.
+    Only one instance exists (singleton pattern).
+    """
+    serializer_class = SystemSettingsSerializer
+    permission_classes = [permissions.IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    def get_object(self):
+        # Always return the singleton instance
+        return SystemSettings.load()
+    
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Handle file uploads separately
+        if 'logo' in request.FILES:
+            # For file uploads, we need to use the request data directly
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+        else:
+            # For JSON data, we can use request.data as is
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        except serializers.ValidationError as e:
+            return Response(
+                {"error": "Validation error", "details": e.detail},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e), "details": "An unexpected error occurred"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+
+

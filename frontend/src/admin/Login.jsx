@@ -6,6 +6,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './dashboard.css';
 import { toast } from 'react-hot-toast';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -50,8 +51,11 @@ const Login = () => {
     }
 
     try {
+      // Use environment configuration for API URL
+      const apiUrl = getApiUrl('/api/admin_token/');
+      
       // Make login request to backend
-      const response = await fetch('http://localhost:8000/api/admin_token/', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

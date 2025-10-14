@@ -49,6 +49,7 @@ from .views import (
     
     # User Profile
     UserProfileView,
+    PasswordChangeView,
     ContactSubmissionCreateView,
     MyTokenObtainPairView,
 
@@ -62,11 +63,14 @@ from .views import (
     NotificationMarkAllAsReadView,
     UnreadNotificationCountView,
     NotificationMarkAsReadView,
+    SystemSettingsRetrieveUpdateView,
+
 )
+from . import ai_api_views
 
 router = DefaultRouter()
 router.register(r'addresses', AddressViewSet, basename='address')
-
+from . import payment_views
 app_name = 'shop'
 
 urlpatterns = [
@@ -78,7 +82,9 @@ urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('register/customer/', CustomerRegistrationView.as_view(), name='register-customer'),
     path('register/vendor/', VendorRegistrationView.as_view(), name='register-vendor'),
-    
+    path('profile/', UserProfileView.as_view(), name='profile'),     
+    path('password/change/', PasswordChangeView.as_view(), name='password-change'),
+
     # Product URLs
     path('products/', ProductListView.as_view(), name='product-list'),
     path('products/create/', ProductCreateView.as_view(), name='product-create'),
@@ -137,6 +143,15 @@ urlpatterns = [
     path('notifications/<int:notification_id>/read/', NotificationMarkAsReadView.as_view(), name='notification-read'),
     path('notifications/read-all/', NotificationMarkAllAsReadView.as_view(), name='notification-read-all'),
     path('notifications/unread-count/', UnreadNotificationCountView.as_view(), name='notification-unread-count'),
+    
+    path('generate-seo-keywords/', ai_api_views.generate_seo_keywords, name='generate_seo_keywords'),
+    # path('test-seo-keywords/', ai_api_views.test_seo_keywords, name='test_seo_keywords'),
+    # path('api-health-check/', ai_api_views.api_health_check, name='api_health_check'),
+
+    path('create-payment-intent/', payment_views.create_payment_intent, name='create_payment_intent'),
+
+    path('system-settings/', SystemSettingsRetrieveUpdateView.as_view(), name='system-settings'),
+
 
     # Include router URLs (addresses)
     path('', include(router.urls)),

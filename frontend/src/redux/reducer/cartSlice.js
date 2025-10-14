@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { getApiUrl } from '../../config/env'; // Import the environment utility
 
 const initialState = {
   items: [],
@@ -24,8 +25,11 @@ export const fetchCart = createAsyncThunk(
   'cart/fetchCart',
   async (_, { getState, rejectWithValue }) => {
     try {
+      // Use environment-based URL
+      const cartUrl = getApiUrl('/api/cart/');
+      
       const response = await axios.get(
-        'http://localhost:8000/api/cart/',
+        cartUrl,
         getAuthConfig(getState)
       );
       return response.data.items || [];
@@ -40,8 +44,11 @@ export const addToCart = createAsyncThunk(
   'cart/addToCart',
   async ({ id, name, price, image, qty = 1 }, { getState, rejectWithValue }) => {
     try {
+      // Use environment-based URL
+      const cartItemsUrl = getApiUrl('/api/cart/items/');
+      
       const response = await axios.post(
-        'http://localhost:8000/api/cart/items/',
+        cartItemsUrl,
         {
           product: id,
           quantity: qty,
@@ -63,8 +70,11 @@ export const updateCartItem = createAsyncThunk(
   'cart/updateCartItem',
   async ({ id, qty }, { getState, rejectWithValue }) => {
     try {
+      // Use environment-based URL
+      const cartItemUrl = getApiUrl(`/api/cart/items/${id}/`);
+      
       const response = await axios.put(
-        `http://localhost:8000/api/cart/items/${id}/`,
+        cartItemUrl,
         { quantity: qty },  // Changed from { quantity: qty } to match your API
         getAuthConfig(getState)
       );
@@ -80,8 +90,11 @@ export const removeFromCart = createAsyncThunk(
   'cart/removeFromCart',
   async (id, { getState, rejectWithValue }) => {
     try {
+      // Use environment-based URL
+      const cartItemUrl = getApiUrl(`/api/cart/items/${id}/`);
+      
       await axios.delete(
-        `http://localhost:8000/api/cart/items/${id}/`,
+        cartItemUrl,
         getAuthConfig(getState)
       );
       return id;
@@ -96,8 +109,11 @@ export const clearCart = createAsyncThunk(
   'cart/clearCart',
   async (_, { getState, rejectWithValue }) => {
     try {
+      // Use environment-based URL
+      const clearCartUrl = getApiUrl('/api/cart/clear/');
+      
       await axios.delete(
-        'http://localhost:8000/api/cart/clear/',
+        clearCartUrl,
         getAuthConfig(getState)
       );
       return [];
@@ -112,8 +128,11 @@ export const checkout = createAsyncThunk(
   'cart/checkout',
   async (_, { getState, rejectWithValue }) => {
     try {
+      // Use environment-based URL
+      const createOrderUrl = getApiUrl('/api/orders/create/');
+      
       const response = await axios.post(
-        'http://localhost:8000/api/orders/create/',
+        createOrderUrl,
         {},
         getAuthConfig(getState)
       );

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { FaStar, FaShoppingCart, FaEye } from "react-icons/fa";
 import './Product.css';
 import { logout } from "../redux/reducer/authSlice";
+import { getApiUrl } from "../config/env"; // Import the environment utility
 
 const Products = () => {
   const [data, setData] = useState([]);
@@ -73,7 +74,10 @@ const Products = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch("http://localhost:8000/api/products/");
+        
+        // Use environment configuration for API URL
+        const apiUrl = getApiUrl('/api/products/');
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -128,7 +132,10 @@ const Products = () => {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
-    return `http://localhost:8000${imagePath}`;
+    
+    // Use environment configuration for image URLs
+    const baseUrl = getApiUrl();
+    return `${baseUrl}${imagePath}`;
   };
 
   // Get limited products (6) or all products based on state

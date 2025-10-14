@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Footer, Navbar } from "../components";
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getApiUrl } from '../config/env'; // Import the environment utility
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -37,7 +38,10 @@ const Register = () => {
         }
 
         try {
-            const response = await axios.post('http://localhost:8000/api/register/', formData);
+            // Use environment-based URL instead of hardcoded localhost
+            const registerApiUrl = getApiUrl('/api/register/');
+            
+            const response = await axios.post(registerApiUrl, formData);
             console.log('Registration successful:', response.data);
             navigate('/login');
         } catch (err) {

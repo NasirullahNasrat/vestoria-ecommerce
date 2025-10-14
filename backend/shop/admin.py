@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from .models import (
     User, Customer, Vendor, Address, 
     Category, Product, ProductImage, ProductReview,
-    Order, OrderItem, Cart, CartItem, Coupon, ContactSubmission, Notification
+    Order, OrderItem, Cart, CartItem, Coupon, ContactSubmission, Notification, SystemSettings
 )
 
 class CustomUserAdmin(UserAdmin):
@@ -98,3 +98,4 @@ admin.site.register(Cart, CartAdmin)
 admin.site.register(Coupon, CouponAdmin)
 admin.site.register(ContactSubmission)
 admin.site.register(Notification)
+admin.site.register(SystemSettings)

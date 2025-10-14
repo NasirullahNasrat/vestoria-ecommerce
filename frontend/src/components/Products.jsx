@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { FaStar, FaShoppingCart, FaEye, FaSearch, FaFilter, FaTimes } from "react-icons/fa";
 import './Product.css';
 import { logout } from "../redux/reducer/authSlice";
+import { getApiUrl } from "../config/env";
 
 const Products = () => {
   const [data, setData] = useState([]);
@@ -86,7 +87,10 @@ const Products = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch("http://localhost:8000/api/products/");
+        
+        // Use environment configuration for API URL
+        const apiUrl = getApiUrl('/api/products/');
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -143,7 +147,10 @@ const Products = () => {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
-    return `http://localhost:8000${imagePath}`;
+    
+    // Use environment configuration for image URLs
+    const baseUrl = process.env.REACT_APP_API_BASE_URL || '';
+    return imagePath.startsWith('/') ? `${baseUrl}${imagePath}` : `${baseUrl}/${imagePath}`;
   };
 
   const handleFilterChange = (e) => {
@@ -157,12 +164,12 @@ const Products = () => {
   const resetFilters = () => {
     setFilters({
       category: '',
-      minPrice: '',
-      maxPrice: '',
-      rating: '',
-      sortBy: '',
-      inStock: false,
-      featured: false
+    minPrice: '',
+    maxPrice: '',
+    rating: '',
+    sortBy: '',
+    inStock: false,
+    featured: false
     });
     setSearchTerm('');
   };
