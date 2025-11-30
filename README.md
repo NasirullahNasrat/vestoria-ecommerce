@@ -83,6 +83,35 @@ Access the admin panel at `/admin` with the default credentials:
 
 ---
 
+## 🛠️ Admin Panel Screens
+
+<p align="center">
+  <img src="project_images/admin page (1).jpg" width="600"/>
+  <img src="project_images/admin page (2).jpg" width="600"/>
+  <img src="project_images/admin page (3).jpg" width="600"/>
+  <img src="project_images/admin page (4).jpg" width="600"/>
+  <img src="project_images/admin page (5).jpg" width="600"/>
+  <img src="project_images/admin page (6).jpg" width="600"/>
+</p>
+
+---
+## 👥 Customer Pages
+
+<p align="center">
+  <img src="project_images/customers page (1).jpg" width="600"/>
+  <img src="project_images/customers page (2).jpg" width="600"/>
+  <img src="project_images/customers page (3).jpg" width="600"/>
+  <img src="project_images/customers page (4).jpg" width="600"/>
+  <img src="project_images/customers page (5).jpg" width="600"/>
+  <img src="project_images/customers page (6).jpg" width="600"/>
+  <img src="project_images/customers page (7).jpg" width="600"/>
+  <img src="project_images/customers page (8).jpg" width="600"/>
+</p>
+
+---
+
+
+
 ## ⚙️ Installation Instructions
 
 ### 🖥️ Backend Setup
