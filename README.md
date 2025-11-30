@@ -85,28 +85,13 @@ Access the admin panel at `/admin` with the default credentials:
 
 ## 🛠️ Admin Panel Screens
 
-<p align="center">
-  <img src="project_images/admin page (1).jpg" width="600"/>
-  <img src="project_images/admin page (2).jpg" width="600"/>
-  <img src="project_images/admin page (3).jpg" width="600"/>
-  <img src="project_images/admin page (4).jpg" width="600"/>
-  <img src="project_images/admin page (5).jpg" width="600"/>
-  <img src="project_images/admin page (6).jpg" width="600"/>
-</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"> <img src="project_images/admin page (1).jpg" /> <img src="project_images/admin page (2).jpg" /> <img src="project_images/admin page (3).jpg" /> <img src="project_images/admin page (4).jpg" /> <img src="project_images/admin page (5).jpg" /> <img src="project_images/admin page (6).jpg" /> </div>
 
 ---
+
 ## 👥 Customer Pages
 
-<p align="center">
-  <img src="project_images/customers page (1).jpg" width="600"/>
-  <img src="project_images/customers page (2).jpg" width="600"/>
-  <img src="project_images/customers page (3).jpg" width="600"/>
-  <img src="project_images/customers page (4).jpg" width="600"/>
-  <img src="project_images/customers page (5).jpg" width="600"/>
-  <img src="project_images/customers page (6).jpg" width="600"/>
-  <img src="project_images/customers page (7).jpg" width="600"/>
-  <img src="project_images/customers page (8).jpg" width="600"/>
-</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"> <img src="project_images/customers page (1).jpg" /> <img src="project_images/customers page (2).jpg" /> <img src="project_images/customers page (3).jpg" /> <img src="project_images/customers page (4).jpg" /> <img src="project_images/customers page (5).jpg" /> <img src="project_images/customers page (6).jpg" /> <img src="project_images/customers page (7).jpg" /> <img src="project_images/customers page (8).jpg" /> </div>
 
 ---
 
